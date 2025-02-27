@@ -117,6 +117,7 @@ namespace CardGame.Editor.LLMAI
             finally
             {
                 EditorUtility.ClearProgressBar();
+                Focus();
             }
         }
     }

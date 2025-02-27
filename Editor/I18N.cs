@@ -316,8 +316,8 @@ namespace CardGame.Editor
             },
             {"SyncWithFeishu", new Dictionary<Language, string>
                 {
-                    {Language.English, "Sync with Feishu"},
-                    {Language.Chinese, "与飞书同步"}
+                    {Language.English, "Sync Bidirectionally"},
+                    {Language.Chinese, "双向同步"}
                 }
             },
             {"ReloadLocalizations", new Dictionary<Language, string>
@@ -352,8 +352,8 @@ namespace CardGame.Editor
             },
             {"TableDefinition", new Dictionary<Language, string>
                 {
-                    {Language.English, "Table Definition"},
-                    {Language.Chinese, "表格定义"}
+                    {Language.English, "Table ID"},
+                    {Language.Chinese, "表格 ID"}
                 }
             },
             {"LocalizationTables", new Dictionary<Language, string>

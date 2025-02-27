@@ -24,26 +24,19 @@ Unity本地化管理工具，支持飞书同步和AI翻译功能。
 1. 打开你的Unity项目
 2. 打开Package Manager (Window > Package Manager)
 3. 点击"+"按钮，选择"Add package from git URL..."
-4. 输入：`https://github.com/Youjixian/LocalizationTranslator.git`
+4. 输入：`https://github.com/Youjixian/UnityAILocalizationTranslator.git`
 5. 点击"Add"
 
 ### 方法二：本地包引用
 
 如果您不想使用Git：
 
-1. 复制整个`LocalizationTranslator`目录到您的计算机上的某个位置
+1. 下载整个项目目录到您的计算机上的某个位置
 2. 打开你的Unity项目
 3. 打开Package Manager (Window > Package Manager)
 4. 点击"+"按钮，选择"Add package from disk..."
-5. 浏览并选择`LocalizationTranslator`目录中的`package.json`文件
+5. 浏览并选择下载的目录中的`package.json`文件
 6. 点击"Open"
-
-### 方法三：直接复制到项目
-
-如果您想要在项目中直接编辑和修改代码：
-
-1. 复制整个`LocalizationTranslator`目录到你的项目的`Packages`目录下
-2. Unity将自动识别并加载包
 
 ## 使用指南
 
@@ -60,41 +53,42 @@ Unity本地化管理工具，支持飞书同步和AI翻译功能。
 
 #### 配置设置
 
-1. 打开Unity菜单 `Tools > Youjixian > Feishu Localization Sync Tool`
+1. 打开Unity菜单 `Tools > Localization > Feishu API Setting`
 2. 在设置面板中填写以下信息：
-   - 飞书API密钥：从飞书开放平台获取
-   - 文档ID：要同步的飞书文档的ID
-   - 工作表名称：指定要同步的工作表
-   - 本地化文件路径：Unity项目中本地化文件的位置
+   - 飞书App ID：从飞书开放平台创建应用获取
+   - App Secret：从飞书开放平台创建应用获取
+   - 表格 ID：指定要同步的多维表格 ID
 
 #### 使用流程
 
 1. 完成配置后，点击"验证连接"确认设置正确
 2. 选择同步方向：
-   - Unity → 飞书：将Unity中的本地化数据上传到飞书
-   - 飞书 → Unity：从飞书下载最新翻译到Unity
+   - 推送到飞书：将Unity中的本地化数据上传到飞书
+   - 送飞书拉取：从飞书下载最新翻译到Unity
    - 双向同步：自动合并两端的更改
-3. 点击"开始同步"按钮执行同步操作
-4. 同步完成后会显示更新统计信息
+3. 在同步过程中，遵循以下同步准则：
+   - **未完成**：从Unity向飞书多维表格进行覆写同步
+   - **翻译中**：不进行任何同步
+   - **已完成**：从飞书多维表格同步该键条目到Unity多语言表中
+4. 点击"开始同步"按钮执行同步操作
+5. 同步完成后会显示更新统计信息
 
 ### AI翻译模块
 
 #### 配置设置
 
-1. 打开Unity菜单 `Tools > Youjixian > Localization Translator`
+1. 打开Unity菜单 `Tools > Localization > AI Translator Settings`
 2. 在设置面板中配置AI服务：
    - 选择AI服务提供商
    - 输入API密钥
-   - 设置模型参数（如需要）
+   - 设置参数（如需要）
 
 #### 使用流程
 
-1. 选择源语言和目标语言
-2. 选择要处理的本地化文件或文件夹
-3. 设置翻译选项：
-   - 仅翻译空白条目
-   - 覆盖现有翻译
-   - 添加翻译注释
+
+1. 选择要处理的本地化表
+2. 设置翻译选项（其中携带描述是携带飞书表格中人工填写的描述）
+3. 选择源语言和目标语言
 4. 点击"开始翻译"按钮
 5. 查看翻译结果，并根据需要手动调整
 
@@ -127,10 +121,13 @@ Unity本地化管理工具，支持飞书同步和AI翻译功能。
 2. **问题：某些字段未能正确同步**
    解答：检查飞书文档的列名是否与映射配置匹配。
 
+3. **问题：有BUG，或者插件中部分字段英文或中文不对**
+   解答：请直接提交 Issue，问题描述清楚，谢谢。
+
 ### AI翻译常见问题
 
 1. **问题：AI翻译质量不佳**
-   解答：尝试调整AI提示词，或者使用更高级的模型。
+   解答：尝试调整AI提示词，或者使用更高级的模型。以及最好使用飞书表格描述来提高翻译精准度。
 
 2. **问题：翻译过程中断**
    解答：这可能是由于API速率限制或网络问题。请等待几分钟后重试。
@@ -212,26 +209,19 @@ This method allows you to easily share and update the package across multiple pr
 1. Open your Unity project
 2. Open Package Manager (Window > Package Manager)
 3. Click the "+" button, select "Add package from git URL..."
-4. Enter: `https://github.com/Youjixian/LocalizationTranslator.git`
+4. Enter: `https://github.com/Youjixian/UnityAILocalizationTranslator.git`
 5. Click "Add"
 
 ### Method 2: Local Package Reference
 
 If you prefer not to use Git:
 
-1. Copy the entire `LocalizationTranslator` directory to a location on your computer
+1. Download the entire project directory to a location on your computer
 2. Open your Unity project
 3. Open Package Manager (Window > Package Manager)
 4. Click the "+" button, select "Add package from disk..."
-5. Browse and select the `package.json` file in the `LocalizationTranslator` directory
+5. Browse and select the `package.json` file in the downloaded directory
 6. Click "Open"
-
-### Method 3: Direct Project Copy
-
-If you want to directly edit and modify the code in your project:
-
-1. Copy the entire `LocalizationTranslator` directory to your project's `Packages` directory
-2. Unity will automatically recognize and load the package
 
 ## Usage Guide
 
@@ -248,41 +238,41 @@ The plugin interface supports switching between Chinese and English:
 
 #### Configuration Settings
 
-1. Open the Unity menu `Tools > Youjixian > Feishu Localization Sync Tool`
+1. Open the Unity menu `Tools > Localization > Feishu API Setting`
 2. Fill in the following information in the settings panel:
-   - Feishu API Key: Obtained from the Feishu Open Platform
-   - Document ID: The ID of the Feishu document to synchronize
-   - Worksheet Name: Specify the worksheet to synchronize
-   - Localization File Path: Location of localization files in the Unity project
+   - Feishu App ID: Obtained from the Feishu Open Platform when creating an application
+   - App Secret: Obtained from the Feishu Open Platform when creating an application
+   - Table ID: Specify the multi-dimensional table ID to synchronize
 
 #### Usage Flow
 
 1. After completing the configuration, click "Verify Connection" to confirm the settings are correct
 2. Choose synchronization direction:
-   - Unity → Feishu: Upload localization data from Unity to Feishu
-   - Feishu → Unity: Download the latest translations from Feishu to Unity
-   - Bidirectional Sync: Automatically merge changes from both ends
-3. Click the "Start Sync" button to execute the synchronization operation
-4. After synchronization is complete, update statistics will be displayed
+   - Push to Feishu: Upload localization data from Unity to Feishu
+   - Pull from Feishu: Download the latest translations from Feishu to Unity
+   - Two-way Sync: Automatically merge changes from both ends
+3. During synchronization, follow these sync guidelines:
+   - **Not Completed**: Overwrite sync from Unity to Feishu multi-dimensional table
+   - **In Translation**: No synchronization
+   - **Completed**: Sync the key entry from the Feishu multi-dimensional table to the Unity multilingual table
+4. Click the "Start Sync" button to execute the synchronization operation
+5. After synchronization is complete, update statistics will be displayed
 
 ### AI Translation Module
 
 #### Configuration Settings
 
-1. Open the Unity menu `Tools > Youjixian > Localization Translator`
+1. Open the Unity menu `Tools > Localization > AI Translator Settings`
 2. Configure the AI service in the settings panel:
    - Select AI service provider
    - Enter API key
-   - Set model parameters (if needed)
+   - Set parameters (if needed)
 
 #### Usage Flow
 
-1. Select source and target languages
-2. Choose localization files or folders to process
-3. Set translation options:
-   - Only translate empty entries
-   - Override existing translations
-   - Add translation comments
+1. Select the localization table to process
+2. Set translation options (where carrying description means carrying manually written descriptions from the Feishu table)
+3. Select source and target languages
 4. Click the "Start Translation" button
 5. Review translation results and adjust manually as needed
 
@@ -315,10 +305,13 @@ If using local package reference:
 2. **Issue: Some fields are not syncing correctly**
    Solution: Check if the column names in the Feishu document match the mapping configuration.
 
+3. **Issue: There is a bug, or some fields in the plugin are incorrect in English or Chinese**
+   Solution: Please submit an Issue directly, and describe the problem clearly. Thank you.
+
 ### AI Translation Common Issues
 
 1. **Issue: Poor AI translation quality**
-   Solution: Try adjusting the AI prompt words or use a more advanced model.
+   Solution: Try adjusting the AI prompt words or use a more advanced model. It's also best to use Feishu table descriptions to improve translation accuracy.
 
 2. **Issue: Translation process interrupts**
    Solution: This may be due to API rate limits or network issues. Wait a few minutes and try again.

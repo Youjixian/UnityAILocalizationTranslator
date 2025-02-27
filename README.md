@@ -44,10 +44,9 @@ Unity本地化管理工具，支持飞书同步和AI翻译功能。
 
 插件界面支持中英文切换：
 
-1. 在任何插件窗口的右上角，你会找到一个语言下拉菜单
+1. 打开Unity菜单 `Tools > Localization > Language Setting`
 2. 选择你偏好的语言（英文或中文）
 3. 界面将立即更新以反映你的语言选择
-4. 你的偏好设置将在Unity会话之间保持
 
 ### 飞书同步模块
 
@@ -229,10 +228,9 @@ If you prefer not to use Git:
 
 The plugin interface supports switching between Chinese and English:
 
-1. In the upper right corner of any plugin window, you'll find a language dropdown menu
+1. Open the Unity menu `Tools > Localization > Language Setting`
 2. Select your preferred language (English or Chinese)
 3. The interface will immediately update to reflect your language choice
-4. Your preference will be maintained between Unity sessions
 
 ### Feishu Sync Module
 

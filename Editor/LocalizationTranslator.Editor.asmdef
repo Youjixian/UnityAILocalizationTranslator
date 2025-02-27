@@ -1,0 +1,22 @@
+{
+    "name": "LocalizationTranslator.Editor",
+    "rootNamespace": "LocalizationTranslator.Editor",
+    "references": [
+        "Unity.Localization",
+        "Unity.Localization.Editor",
+        "Unity.EditorCoroutines.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+} 

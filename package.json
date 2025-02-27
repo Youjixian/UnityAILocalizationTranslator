@@ -1,0 +1,22 @@
+{
+  "name": "com.localization-translator",
+  "version": "0.0.1",
+  "displayName": "Localization Translator",
+  "description": "一个Unity本地化管理工具，支持飞书同步和AI翻译功能 | A Unity localization management tool that supports Feishu synchronization and AI translation features",
+  "unity": "2022.3",
+  "keywords": [
+    "localization",
+    "translator",
+    "feishu",
+    "ai"
+  ],
+  "author": {
+    "name": "Youjixian",
+    "url": "https://github.com/Youjixian"
+  },
+  "dependencies": {
+    "com.unity.localization": "1.0.0",
+    "com.unity.editorcoroutines": "1.0.0",
+    "com.unity.nuget.newtonsoft-json": "3.0.0"
+  }
+} 

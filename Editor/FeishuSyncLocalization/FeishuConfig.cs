@@ -10,12 +10,8 @@ public class FeishuConfig : ScriptableObject
     {
         get
         {
-            // 获取当前脚本所在目录
-            MonoScript script = MonoScript.FromScriptableObject(CreateInstance<FeishuConfig>());
-            string scriptPath = AssetDatabase.GetAssetPath(script);
-            string directory = Path.GetDirectoryName(scriptPath);
-            // 返回相对于脚本的配置文件路径
-            return Path.Combine(directory, "FeishuConfig.asset");
+            // 将配置文件存储在 Editor 目录下，确保不会被打包
+            return "Assets/Editor/FeishuSync/FeishuConfig.asset";
         }
     }
     
@@ -31,13 +27,23 @@ public class FeishuConfig : ScriptableObject
                 {
                     instance = CreateInstance<FeishuConfig>();
                     #if UNITY_EDITOR
-                    string directory = System.IO.Path.GetDirectoryName(CONFIG_PATH);
-                    if (!System.IO.Directory.Exists(directory))
+                    // 确保 Editor/FeishuSync 目录存在
+                    if (!AssetDatabase.IsValidFolder("Assets/Editor/FeishuSync"))
                     {
-                        System.IO.Directory.CreateDirectory(directory);
+                        // 确认 Editor 目录存在
+                        if (!AssetDatabase.IsValidFolder("Assets/Editor"))
+                        {
+                            AssetDatabase.CreateFolder("Assets", "Editor");
+                            AssetDatabase.Refresh();
+                        }
+                        
+                        AssetDatabase.CreateFolder("Assets/Editor", "FeishuSync");
+                        AssetDatabase.Refresh();
                     }
+                    
                     AssetDatabase.CreateAsset(instance, CONFIG_PATH);
                     AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
                     #endif
                 }
             }

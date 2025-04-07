@@ -616,6 +616,13 @@ namespace CardGame.Editor.LLMAI
 
                 if (string.IsNullOrEmpty(translatedText))
                 {
+                    // 如果源文本为空，则空的翻译结果是合理的
+                    if (string.IsNullOrEmpty(task.sourceText))
+                    {
+                        // 在主线程中更新翻译结果(空字符串)
+                        await UpdateTranslationResult(task, string.Empty, processedTasks);
+                        return;
+                    }
                     throw new Exception("翻译结果为空");
                 }
 

@@ -91,6 +91,13 @@ namespace CardGame.Editor.LLMAI
             string userPromptOverride = null,
             string additionalContext = null)
         {
+            // 如果文本为空，直接返回空字符串而不进行翻译
+            if (string.IsNullOrEmpty(text))
+            {
+                Debug.Log($"[AI翻译] 跳过空文本翻译，本地化Key: {localizationKey}");
+                return string.Empty;
+            }
+
             string userPrompt = userPromptOverride ?? text;
             string systemPrompt = systemPromptOverride ?? $"You are a PC card game professional translator. Translate the following text to {targetLanguage}.";
 

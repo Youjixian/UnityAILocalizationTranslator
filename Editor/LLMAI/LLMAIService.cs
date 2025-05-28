@@ -99,21 +99,36 @@ namespace CardGame.Editor.LLMAI
             }
 
             string userPrompt = userPromptOverride ?? text;
-            string systemPrompt = systemPromptOverride ?? $"You are a PC card game professional translator. Translate the following text to {targetLanguage}.";
+            string systemPrompt;
 
-            // 如果有描述信息，添加到系统提示中
-            if (!string.IsNullOrEmpty(description))
+            if (systemPromptOverride != null)
             {
-                systemPrompt += $" Context description: {description}";
+                systemPrompt = systemPromptOverride;
             }
-
-            // 如果有本地化key且调用者想要包含它
-            if (!string.IsNullOrEmpty(localizationKey) && !string.IsNullOrEmpty(additionalContext))
+            else
             {
-                systemPrompt += $" {additionalContext}";
-            }
+                var sb = new StringBuilder();
+                sb.AppendLine($"You are a professional game translator. Your task is to translate the text provided in the USER'S MESSAGE to {targetLanguage}.");
 
-            systemPrompt += " Keep the same format and style. Only respond with the translation, no explanations.";
+                bool hasDescription = !string.IsNullOrEmpty(description);
+                bool hasLocalizationInfo = !string.IsNullOrEmpty(localizationKey) && !string.IsNullOrEmpty(additionalContext);
+
+                if (hasDescription || hasLocalizationInfo)
+                {
+                    sb.AppendLine("This is contextual information to aid your translation of the USER'S MESSAGE. DO NOT translate this contextual information; it is for your understanding only:");
+                    if (hasDescription)
+                    {
+                        sb.AppendLine($"- Context Description: {description}");
+                    }
+                    if (hasLocalizationInfo)
+                    {
+                        sb.AppendLine($"- Localization Info: {additionalContext}");
+                    }
+                }
+                
+                sb.Append($"Translate ONLY the USER'S MESSAGE. Maintain original style and formatting. Respond with only the translated text, no explanations or apologies.");
+                systemPrompt = sb.ToString();
+            }
 
             var messages = new List<Message>
             {

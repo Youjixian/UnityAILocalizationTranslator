@@ -99,36 +99,21 @@ namespace CardGame.Editor.LLMAI
             }
 
             string userPrompt = userPromptOverride ?? text;
-            string systemPrompt;
+            string systemPrompt = systemPromptOverride ?? $"You are a PC card game professional translator. Your primary instruction is to translate the text given in the user prompt to {targetLanguage}.";
 
-            if (systemPromptOverride != null)
+            // 如果有描述信息，添加到系统提示中
+            if (!string.IsNullOrEmpty(description))
             {
-                systemPrompt = systemPromptOverride;
+                systemPrompt += $" Context description: {description}";
             }
-            else
+
+            // 如果有本地化key且调用者想要包含它
+            if (!string.IsNullOrEmpty(localizationKey) && !string.IsNullOrEmpty(additionalContext))
             {
-                var sb = new StringBuilder();
-                sb.AppendLine($"You are a professional game translator. Your task is to translate the text provided in the USER'S MESSAGE to {targetLanguage}.");
-
-                bool hasDescription = !string.IsNullOrEmpty(description);
-                bool hasLocalizationInfo = !string.IsNullOrEmpty(localizationKey) && !string.IsNullOrEmpty(additionalContext);
-
-                if (hasDescription || hasLocalizationInfo)
-                {
-                    sb.AppendLine("This is contextual information to aid your translation of the USER'S MESSAGE. DO NOT translate this contextual information; it is for your understanding only:");
-                    if (hasDescription)
-                    {
-                        sb.AppendLine($"- Context Description: {description}");
-                    }
-                    if (hasLocalizationInfo)
-                    {
-                        sb.AppendLine($"- Localization Info: {additionalContext}");
-                    }
-                }
-                
-                sb.Append($"Translate ONLY the USER'S MESSAGE. Maintain original style and formatting. Respond with only the translated text, no explanations or apologies.");
-                systemPrompt = sb.ToString();
+                systemPrompt += $" {additionalContext}";
             }
+
+            systemPrompt += " Critically, you must only translate the text found in the user prompt. Do not translate any part of this system message, including context descriptions or keys. Preserve the original text's format and style in your translation. Return only the translated text and nothing else.";
 
             var messages = new List<Message>
             {

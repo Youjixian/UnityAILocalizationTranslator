@@ -530,11 +530,93 @@ public class LocalizationSyncManager
                 
                 // 确保表格存在
                 var currentTableId = await EnsureTableExists(tableCollection);
-                var records = await _feishuService.ListRecords(currentTableId);
-                var config = FeishuConfig.Instance;
                 
-                var updatesList = new List<(string recordId, Dictionary<string, object> fields)>();
-                var createList = new List<Dictionary<string, object>>();
+                // 获取Unity中的所有键
+                var unityKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in tableCollection.SharedData.Entries)
+                {
+                    unityKeys.Add(entry.Key);
+                }
+                
+                // 获取现有记录
+                var existingRecords = await _feishuService.GetAllRecords(currentTableId);
+                Debug.Log($"[本地化同步] 从飞书获取到 {existingRecords?.Count ?? 0} 条记录");
+
+                // 检查重复键，特别处理"翻译中"状态的记录
+                var keyGroups = existingRecords?
+                    .Where(r => r["fields"] != null && r["fields"]["Key"] != null)
+                    .GroupBy(r => r["fields"]["Key"].Value<string>(), StringComparer.OrdinalIgnoreCase)
+                    .Where(g => g.Count() > 1)
+                    .ToList();
+
+                var keysToCreate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var keysToUpdate = new Dictionary<string, string>();  // key -> recordId
+                var keysToDelete = new List<string>();  // recordId list
+                var processedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // 处理重复键
+                if (keyGroups != null && keyGroups.Any())
+                {
+                    foreach (var group in keyGroups)
+                    {
+                        var translatingRecords = group.Where(r => r["fields"]["Status"]?.Value<string>() == "翻译中").ToList();
+                        if (translatingRecords.Any())
+                        {
+                            var errorMsg = $"发现重复的键 '{group.Key}'，且存在'翻译中'状态的记录：\n";
+                            foreach (var record in translatingRecords)
+                            {
+                                errorMsg += $"记录ID: {record["record_id"]}\n";
+                            }
+                            Debug.LogError($"[本地化同步] {errorMsg}");
+                            throw new Exception(errorMsg);
+                        }
+                        else
+                        {
+                            // 对于非"翻译中"状态的重复记录，保留最新的，删除其他的
+                            var records = group.OrderByDescending(r => r["last_modified_time"]?.Value<long>() ?? 0).ToList();
+                            for (int i = 1; i < records.Count; i++) // 从1开始，跳过第一条（最新的）
+                            {
+                                keysToDelete.Add(records[i]["record_id"].Value<string>());
+                                Debug.Log($"[本地化同步] 标记要删除的重复键记录: {group.Key}, 记录ID: {records[i]["record_id"]}");
+                            }
+                        }
+                    }
+                }
+
+                // 处理可能存在的重复键，只保留最后一条记录
+                var recordMap = existingRecords != null
+                    ? existingRecords.Where(r => r["fields"] != null && r["fields"]["Key"] != null)
+                        .GroupBy(r => r["fields"]["Key"].Value<string>(), StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.OrderByDescending(r => r["last_modified_time"]?.Value<long>() ?? 0).First(),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                    : new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+
+                // 检查需要删除的键
+                if (existingRecords != null)
+                {
+                    foreach (var record in existingRecords)
+                    {
+                        var fields = record["fields"] as JObject;
+                        var key = fields["Key"]?.Value<string>();
+                        var status = fields["Status"]?.Value<string>();
+
+                        // 如果key为空或者key不在Unity中，且不是"翻译中"状态，就删除
+                        if (string.IsNullOrEmpty(key) || !unityKeys.Contains(key))
+                        {
+                            if (status == "翻译中")
+                            {
+                                Debug.Log($"[本地化同步] 键 {(string.IsNullOrEmpty(key) ? "<空>" : key)} 不在Unity中但正在翻译中，保留");
+                                continue;
+                            }
+                            
+                            keysToDelete.Add(record["record_id"].Value<string>());
+                            Debug.Log($"[本地化同步] 标记要删除的键: {(string.IsNullOrEmpty(key) ? "<空>" : key)}");
+                        }
+                    }
+                }
 
                 // 确保表格数据存在
                 if (!_allLocalizations.ContainsKey(tableCollection))
@@ -543,32 +625,21 @@ public class LocalizationSyncManager
                 }
                 var tableData = _allLocalizations[tableCollection];
 
-                // 创建记录ID到记录的映射
-                var recordMap = records.ToDictionary(
-                    r => r["fields"]["Key"].Value<string>(),
-                    r => r
-                );
-
-                Debug.Log($"[本地化同步] 开始处理本地数据，共 {tableData.Count} 个键");
-                
-                // 处理本地数据
-                foreach (var (key, translations) in tableData)
+                // 检查需要创建和更新的键
+                foreach (var key in tableData.Keys)
                 {
-                    var fields = new Dictionary<string, object>
+                    if (processedKeys.Contains(key))
                     {
-                        { "Key", key }
-                    };
-
-                    // 添加翻译
-                    foreach (var (lang, text) in translations)
-                    {
-                        fields[lang] = text;
+                        Debug.LogWarning($"[本地化同步] 发现重复键: {key}，将被跳过");
+                        continue;
                     }
+                    processedKeys.Add(key);
 
-                    // 检查记录是否存在
                     if (recordMap.TryGetValue(key, out var existingRecord))
                     {
-                        var status = existingRecord["fields"]["Status"].Value<string>();
+                        var existingFields = existingRecord["fields"] as JObject;
+                        var status = existingFields["Status"]?.Value<string>();
+                        
                         if (status == "翻译中")
                         {
                             Debug.Log($"[本地化同步] 跳过翻译中的记录: {key}");
@@ -576,9 +647,27 @@ public class LocalizationSyncManager
                         }
                         else if (status == "未完成")
                         {
-                            fields["Status"] = "未完成";
-                            updatesList.Add((existingRecord["record_id"].Value<string>(), fields));
-                            Debug.Log($"[本地化同步] 更新记录: {key}, 状态: 未完成");
+                            // 检查是否需要更新
+                            bool needsUpdate = false;
+                            foreach (var locale in LocalizationEditorSettings.GetLocales())
+                            {
+                                var lang = locale.Identifier.Code;
+                                if (tableData[key].TryGetValue(lang, out var newTranslation))
+                                {
+                                    var existingTranslation = existingFields[lang]?.Value<string>();
+                                    if (existingTranslation != newTranslation)
+                                    {
+                                        needsUpdate = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (needsUpdate)
+                            {
+                                keysToUpdate[key] = existingRecord["record_id"].Value<string>();
+                                Debug.Log($"[本地化同步] 标记需要更新的键: {key}");
+                            }
                         }
                         else
                         {
@@ -587,39 +676,109 @@ public class LocalizationSyncManager
                     }
                     else
                     {
-                        fields["Status"] = "未完成";
-                        createList.Add(fields);
-                        Debug.Log($"[本地化同步] 新建记录: {key}, 状态: 未完成");
-                    }
-
-                    // 批量处理
-                    if (updatesList.Count >= 500)
-                    {
-                        Debug.Log("[本地化同步] 批量更新500条记录...");
-                        await _feishuService.BatchUpdateRecords(currentTableId, updatesList);
-                        updatesList.Clear();
-                    }
-                    if (createList.Count >= 500)
-                    {
-                        Debug.Log("[本地化同步] 批量创建500条记录...");
-                        await _feishuService.BatchCreateRecords(currentTableId, createList);
-                        createList.Clear();
+                        keysToCreate.Add(key);
+                        Debug.Log($"[本地化同步] 标记需要创建的键: {key}");
                     }
                 }
 
-                // 处理剩余的记录
-                if (updatesList.Count > 0)
+                // 删除不再使用的记录
+                if (keysToDelete.Count > 0)
                 {
-                    Debug.Log($"[本地化同步] 批量更新剩余的 {updatesList.Count} 条记录...");
-                    await _feishuService.BatchUpdateRecords(currentTableId, updatesList);
-                }
-                if (createList.Count > 0)
-                {
-                    Debug.Log($"[本地化同步] 批量创建剩余的 {createList.Count} 条记录...");
-                    await _feishuService.BatchCreateRecords(currentTableId, createList);
+                    Debug.Log($"[本地化同步] 开始删除 {keysToDelete.Count} 条未使用的记录");
+                    
+                    // 分批删除，每批最多500条
+                    int totalBatches = (keysToDelete.Count + 499) / 500;
+                    for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
+                    {
+                        var startIndex = batchIndex * 500;
+                        var batchSize = Math.Min(500, keysToDelete.Count - startIndex);
+                        var batch = keysToDelete.GetRange(startIndex, batchSize);
+                        
+                        Debug.Log($"[本地化同步] 正在删除第 {batchIndex + 1}/{totalBatches} 批，本批 {batch.Count} 条记录");
+                        await _feishuService.BatchDeleteRecords(currentTableId, batch);
+                    }
+                    
+                    Debug.Log($"[本地化同步] 成功删除所有 {keysToDelete.Count} 条未使用的记录");
                 }
 
+                // 创建新记录
+                if (keysToCreate.Count > 0)
+                {
+                    var createBatch = new List<Dictionary<string, object>>();
+                    foreach (var key in keysToCreate)
+                    {
+                        var fields = new Dictionary<string, object>
+                        {
+                            { "Key", key },
+                            { "Status", "未完成" }
+                        };
+
+                        // 添加所有语言的翻译
+                        foreach (var locale in LocalizationEditorSettings.GetLocales())
+                        {
+                            var lang = locale.Identifier.Code;
+                            if (tableData[key].TryGetValue(lang, out var translation))
+                            {
+                                fields[lang] = translation;
+                            }
+                        }
+
+                        createBatch.Add(fields);
+                        if (createBatch.Count >= 500)
+                        {
+                            await _feishuService.BatchCreateRecords(currentTableId, createBatch);
+                            createBatch.Clear();
+                        }
+                    }
+
+                    if (createBatch.Count > 0)
+                    {
+                        await _feishuService.BatchCreateRecords(currentTableId, createBatch);
+                    }
+
+                    Debug.Log($"[本地化同步] 创建了 {keysToCreate.Count} 条新记录");
+                }
+
+                // 更新现有记录
+                if (keysToUpdate.Count > 0)
+                {
+                    var updateBatch = new List<(string recordId, Dictionary<string, object> fields)>();
+                    foreach (var (key, recordId) in keysToUpdate)
+                    {
+                        var fields = new Dictionary<string, object>
+                        {
+                            { "Key", key }
+                        };
+
+                        // 添加所有语言的翻译
+                        foreach (var locale in LocalizationEditorSettings.GetLocales())
+                        {
+                            var lang = locale.Identifier.Code;
+                            if (tableData[key].TryGetValue(lang, out var translation))
+                            {
+                                fields[lang] = translation;
+                            }
+                        }
+
+                        updateBatch.Add((recordId, fields));
+                        if (updateBatch.Count >= 500)
+                        {
+                            await _feishuService.BatchUpdateRecords(currentTableId, updateBatch);
+                            updateBatch.Clear();
+                        }
+                    }
+
+                    if (updateBatch.Count > 0)
+                    {
+                        await _feishuService.BatchUpdateRecords(currentTableId, updateBatch);
+                    }
+
+                    Debug.Log($"[本地化同步] 更新了 {keysToUpdate.Count} 条记录");
+                }
+
+                var totalProcessed = keysToCreate.Count + keysToUpdate.Count + keysToDelete.Count;
                 Debug.Log($"[本地化同步] 表格 {tableCollection.TableCollectionName} 同步完成");
+                Debug.Log($"[本地化同步] 创建: {keysToCreate.Count} 条，更新: {keysToUpdate.Count} 条，删除: {keysToDelete.Count} 条");
             }
 
             // 从飞书拉取已完成的翻译

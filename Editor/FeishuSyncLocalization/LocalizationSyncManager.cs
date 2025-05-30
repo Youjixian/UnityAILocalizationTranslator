@@ -477,15 +477,26 @@ public class LocalizationSyncManager
                     foreach (var locale in LocalizationEditorSettings.GetLocales())
                     {
                         var lang = locale.Identifier.Code;
-                        var translation = fields[lang]?.Value<string>();
-                        if (!string.IsNullOrEmpty(translation))
+                        if (fields.TryGetValue(lang, out JToken langToken))
                         {
-                            // 检查本地内容是否有变化
-                            if (!tableData[key].ContainsKey(lang) || tableData[key][lang] != translation)
+                            string feishuTranslation;
+                            if (langToken.Type == JTokenType.Null)
+                            {
+                                feishuTranslation = string.Empty;
+                            }
+                            else
+                            {
+                                feishuTranslation = langToken.Value<string>();
+                            }
+
+                            string currentLocalTranslation = null;
+                            tableData[key].TryGetValue(lang, out currentLocalTranslation);
+
+                            if (currentLocalTranslation != feishuTranslation)
                             {
                                 hasChanges = true;
-                                tableData[key][lang] = translation;
-                                Debug.Log($"[本地化同步] 记录 {key} 更新 {lang} 的翻译");
+                                tableData[key][lang] = feishuTranslation;
+                                Debug.Log($"[本地化同步] 记录 {key} 更新 {lang} 的翻译为: '{feishuTranslation}'");
                             }
                         }
                     }

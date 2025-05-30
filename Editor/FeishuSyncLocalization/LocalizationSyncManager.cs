@@ -478,15 +478,13 @@ public class LocalizationSyncManager
                     {
                         var lang = locale.Identifier.Code;
                         var translation = fields[lang]?.Value<string>();
-                        if (!string.IsNullOrEmpty(translation))
+                        
+                        // 检查本地内容是否有变化，或者是否需要将飞书的空值同步过来
+                        if (!tableData[key].ContainsKey(lang) || tableData[key][lang] != translation)
                         {
-                            // 检查本地内容是否有变化
-                            if (!tableData[key].ContainsKey(lang) || tableData[key][lang] != translation)
-                            {
-                                hasChanges = true;
-                                tableData[key][lang] = translation;
-                                Debug.Log($"[本地化同步] 记录 {key} 更新 {lang} 的翻译");
-                            }
+                            hasChanges = true;
+                            tableData[key][lang] = translation; // 即使 translation 是 null 或空，也进行赋值
+                            Debug.Log($"[本地化同步] 记录 {key} 更新 {lang} 的翻译 (可能为空值)");
                         }
                     }
                     if (hasChanges)

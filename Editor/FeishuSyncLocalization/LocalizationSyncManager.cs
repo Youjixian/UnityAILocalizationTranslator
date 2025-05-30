@@ -63,21 +63,35 @@ public class LocalizationSyncManager
 
                     // 遍历所有条目
                     int entryCount = 0;
-                    foreach (var entry in table.SharedData.Entries)
+                    foreach (var sharedEntry in tableCollection.SharedData.Entries)
                     {
-                        if (!tableData.ContainsKey(entry.Key))
+                        string key = sharedEntry.Key;
+                        if (!tableData.ContainsKey(key))
                         {
-                            tableData[entry.Key] = new Dictionary<string, string>();
+                            tableData[key] = new Dictionary<string, string>();
                         }
 
-                        var value = table.GetEntry(entry.Id)?.Value;
-                        if (!string.IsNullOrEmpty(value))
+                        var tableEntry = table.GetEntry(sharedEntry.Id);
+                        string valueToStore;
+                        if (tableEntry != null && tableEntry.Value != null)
                         {
-                            tableData[entry.Key][locale.Identifier.Code] = value;
+                            valueToStore = tableEntry.Value;
+                        }
+                        else
+                        {
+                            // 如果StringTable中没有条目，或条目的Value为null，则在内存中视为空字符串
+                            valueToStore = string.Empty;
+                        }
+                        
+                        // 即使是空字符串也存储，以确保数据一致性
+                        tableData[key][locale.Identifier.Code] = valueToStore;
+                        
+                        if (!string.IsNullOrEmpty(valueToStore)) // 仅在实际有值时计数，或根据需要调整计数逻辑
+                        {
                             entryCount++;
                         }
                     }
-                    Debug.Log($"[本地化同步] 语言 {locale.Identifier.Code} 加载了 {entryCount} 个翻译条目");
+                    Debug.Log($"[本地化同步] 语言 {locale.Identifier.Code} 加载并处理了 {table.SharedData.Entries.Count()} 个共享键，其中 {entryCount} 个具有非空翻译值存入内存");
                 }
                 Debug.Log($"[本地化同步] 表 {tableCollection.TableCollectionName} 加载完成，共 {tableData.Count} 个键");
             }
@@ -838,14 +852,16 @@ public class LocalizationSyncManager
                     }
 
                     int langUpdated = 0;
+                    int langActuallyUpdated = 0; // 新增：用于精确计数的变量
                     // 遍历所有本地化键
                     foreach (var (key, translations) in tableData)
                     {
                         if (!translations.ContainsKey(locale.Identifier.Code))
                             continue;
 
-                        var value = translations[locale.Identifier.Code];
+                        var valueFromAllLocalizations = translations[locale.Identifier.Code];
                         var entry = table.GetEntry(key);
+                        bool changedThisEntry = false;
                         
                         if (entry == null)
                         {
@@ -854,21 +870,35 @@ public class LocalizationSyncManager
                             if (sharedEntry == null)
                             {
                                 sharedEntry = tableCollection.SharedData.AddKey(key);
-                                Debug.Log($"[本地化同步] 添加新键: {key}");
+                                Debug.Log($"[本地化同步] 表 '{tableCollection.TableCollectionName}' 添加新共享键: {key}");
                             }
-                            entry = table.AddEntry(sharedEntry.Id, value);
+                            table.AddEntry(sharedEntry.Id, valueFromAllLocalizations);
+                            Debug.Log($"[本地化同步] 表 '{tableCollection.TableCollectionName}' 语言 '{locale.Identifier.Code}' 添加新条目 for key '{key}' value '{valueFromAllLocalizations}'");
+                            changedThisEntry = true;
                         }
                         else
                         {
-                            // 更新现有条目
-                            entry.Value = value;
+                            // 更新现有条目，仅当值不同时
+                            if (entry.Value != valueFromAllLocalizations)
+                            {
+                                Debug.Log($"[本地化同步] 表 '{tableCollection.TableCollectionName}' 语言 '{locale.Identifier.Code}' 更新键 '{key}': FROM '{entry.Value ?? "<null>"}' TO '{valueFromAllLocalizations ?? "<null>"}'");
+                                entry.Value = valueFromAllLocalizations;
+                                changedThisEntry = true;
+                            }
                         }
-                        langUpdated++;
+                        
+                        if (changedThisEntry)
+                        {
+                            langActuallyUpdated++; // 只在实际更改时计数
+                        }
                     }
 
-                    Debug.Log($"[本地化同步] 语言 {locale.Identifier.Code} 更新了 {langUpdated} 个条目");
-                    totalUpdated += langUpdated;
-                    EditorUtility.SetDirty(table);
+                    if (langActuallyUpdated > 0)
+                    {
+                        Debug.Log($"[本地化同步] 语言 {locale.Identifier.Code} 实际更新了 {langActuallyUpdated} 个条目");
+                        EditorUtility.SetDirty(table); // 仅当该语言表实际更改时才标记为脏
+                    }
+                    totalUpdated += langActuallyUpdated; // 累加实际更新的条目数
                 }
 
                 Debug.Log($"[本地化同步] 表格 {tableCollection.TableCollectionName} 更新了 {totalUpdated} 个条目");

@@ -457,14 +457,10 @@ public class LocalizationSyncManager
                         continue;
                     }
 
-                    if (status == "翻译中")
+                    // 只处理"已完成"状态的记录进行拉取
+                    if (status != "已完成")
                     {
-                        Debug.Log($"[本地化同步] 跳过翻译中的记录: {key}");
-                        continue;
-                    }
-                    else if (status != "已完成")
-                    {
-                        Debug.Log($"[本地化同步] 跳过未完成的记录: {key}, 状态: {status}");
+                        // Debug.Log($"[本地化同步] 跳过非已完成状态的记录: {key}, 状态: {status}"); // 可以取消注释以进行调试
                         continue;
                     }
 
@@ -473,34 +469,48 @@ public class LocalizationSyncManager
                         tableData[key] = new Dictionary<string, string>();
                     }
 
-                    bool hasChanges = false;
+                    bool recordHasChangedFlags = false;
                     foreach (var locale in LocalizationEditorSettings.GetLocales())
                     {
                         var lang = locale.Identifier.Code;
-                        if (fields.TryGetValue(lang, out JToken langToken))
+                        string feishuValueToStore;
+
+                        // 检查Feishu记录中是否实际存在该语言字段
+                        if (fields.ContainsKey(lang))
                         {
-                            string feishuTranslation;
+                            JToken langToken = fields[lang];
                             if (langToken.Type == JTokenType.Null)
                             {
-                                feishuTranslation = string.Empty;
+                                feishuValueToStore = string.Empty; // 显式null视为空
                             }
                             else
                             {
-                                feishuTranslation = langToken.Value<string>();
-                            }
-
-                            string currentLocalTranslation = null;
-                            tableData[key].TryGetValue(lang, out currentLocalTranslation);
-
-                            if (currentLocalTranslation != feishuTranslation)
-                            {
-                                hasChanges = true;
-                                tableData[key][lang] = feishuTranslation;
-                                Debug.Log($"[本地化同步] 记录 {key} 更新 {lang} 的翻译为: '{feishuTranslation}'");
+                                feishuValueToStore = langToken.Value<string>(); // 获取实际值 (可能是""或文本)
                             }
                         }
+                        else
+                        {
+                            // 如果Feishu记录中不存在该语言的字段，并且状态是"已完成"，则视为空字符串
+                            feishuValueToStore = string.Empty;
+                            Debug.Log($"[本地化同步] 表 '{tableCollection.TableCollectionName}' 键 '{key}' 语言 '{lang}': Feishu中缺少字段，视为空字符串。");
+                        }
+
+                        string localValueInMemory = null;
+                        if (tableData[key].TryGetValue(lang, out string currentLocalVal))
+                        {
+                            localValueInMemory = currentLocalVal;
+                        }
+
+                        // 仅当Feishu的值与内存中的本地值不同时才更新
+                        if (localValueInMemory != feishuValueToStore)
+                        {
+                            recordHasChangedFlags = true;
+                            tableData[key][lang] = feishuValueToStore;
+                            Debug.Log($"[本地化同步] 表 '{tableCollection.TableCollectionName}' 键 '{key}' 语言 '{lang}': Feishu ('{feishuValueToStore}') {(localValueInMemory == null ? "将写入新条目" : $"将覆盖本地 ('{localValueInMemory}')")}");
+                        }
                     }
-                    if (hasChanges)
+
+                    if (recordHasChangedFlags)
                     {
                         updatedCount++;
                     }

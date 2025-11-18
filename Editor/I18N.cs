@@ -356,6 +356,12 @@ namespace CardGame.Editor
                     {Language.Chinese, "飞书API设置"}
                 }
             },
+            {"FeishuEnableLogs", new Dictionary<Language, string>
+                {
+                    {Language.English, "Enable Feishu API Logs"},
+                    {Language.Chinese, "启用飞书API日志"}
+                }
+            },
             {"AppID", new Dictionary<Language, string>
                 {
                     {Language.English, "App ID"},
@@ -862,6 +868,96 @@ namespace CardGame.Editor
                     {Language.Chinese, "请依据审阅意见改进翻译，同时保留占位符（如 {0}、@、{name}、%d）、数字与单位、空格与标点，并确保术语一致、语气专业。只输出修正后的翻译文本。"}
                 }
             },
+            {"WindowTitlePromptSettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "AI Prompt Settings"},
+                    {Language.Chinese, "AI提示词设置"}
+                }
+            },
+            {"EnablePromptLogs", new Dictionary<Language, string>
+                {
+                    {Language.English, "Enable Prompt Logs"},
+                    {Language.Chinese, "启用提示词日志"}
+                }
+            },
+            {"Prompt_GlobalSettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Global Settings"},
+                    {Language.Chinese, "全局设置"}
+                }
+            },
+            {"Prompt_EnableSupplements", new Dictionary<Language, string>
+                {
+                    {Language.English, "Enable Language Supplement Prompts"},
+                    {Language.Chinese, "启用按语言增补提示词"}
+                }
+            },
+            {"Prompt_SystemTemplates", new Dictionary<Language, string>
+                {
+                    {Language.English, "System Prompt Templates"},
+                    {Language.Chinese, "系统提示词模板"}
+                }
+            },
+            {"Prompt_TranslationTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translation Template"},
+                    {Language.Chinese, "翻译模板"}
+                }
+            },
+            {"Prompt_ReviewTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review Template"},
+                    {Language.Chinese, "审阅模板"}
+                }
+            },
+            {"Prompt_FixTemplateDeprecated", new Dictionary<Language, string>
+                {
+                    {Language.English, "Fix Template (Deprecated)"},
+                    {Language.Chinese, "修正模板（已废弃）"}
+                }
+            },
+            {"Prompt_PerLanguageSupplements", new Dictionary<Language, string>
+                {
+                    {Language.English, "Per-Language Supplements"},
+                    {Language.Chinese, "按语言增补"}
+                }
+            },
+            {"Prompt_TranslationSupplement", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translation Supplement"},
+                    {Language.Chinese, "翻译增补"}
+                }
+            },
+            {"Prompt_ReviewSupplement", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review Supplement"},
+                    {Language.Chinese, "审阅增补"}
+                }
+            },
+            {"Prompt_Notes", new Dictionary<Language, string>
+                {
+                    {Language.English, "Notes"},
+                    {Language.Chinese, "备注"}
+                }
+            },
+            {"Prompt_ExportJSON", new Dictionary<Language, string>
+                {
+                    {Language.English, "Export Supplements JSON"},
+                    {Language.Chinese, "导出增补JSON"}
+                }
+            },
+            {"Prompt_ImportJSON", new Dictionary<Language, string>
+                {
+                    {Language.English, "Import Supplements JSON"},
+                    {Language.Chinese, "导入增补JSON"}
+                }
+            },
+            {"Prompt_OpenAISettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Open AI Translator Settings"},
+                    {Language.Chinese, "打开AI翻译设置"}
+                }
+            },
         };
 
         /// <summary>
@@ -888,9 +984,105 @@ namespace CardGame.Editor
             {
                 return text;
             }
-            
             // 如果找不到翻译，返回键名
             return key;
         }
     }
 }
+/*
+                {
+                    {Language.English, "AI Prompt Settings"},
+                    {Language.Chinese, "AI提示词设置"}
+                }
+            },
+            {"Prompt_GlobalSettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Global Settings"},
+                    {Language.Chinese, "全局设置"}
+                }
+            },
+            {"Prompt_EnableSupplements", new Dictionary<Language, string>
+                {
+                    {Language.English, "Enable Language Supplement Prompts"},
+                    {Language.Chinese, "启用按语言增补提示词"}
+                }
+            },
+            {"Prompt_SystemTemplates", new Dictionary<Language, string>
+                {
+                    {Language.English, "System Prompt Templates"},
+                    {Language.Chinese, "系统提示词模板"}
+                }
+            },
+            {"Prompt_TranslationTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translation Template"},
+                    {Language.Chinese, "翻译模板"}
+                }
+            },
+            {"Prompt_ReviewTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review Template"},
+                    {Language.Chinese, "审阅模板"}
+                }
+            },
+            {"Prompt_FixTemplateDeprecated", new Dictionary<Language, string>
+                {
+                    {Language.English, "Fix Template (Deprecated)"},
+                    {Language.Chinese, "修正模板（已废弃）"}
+                }
+            },
+            {"Prompt_PerLanguageSupplements", new Dictionary<Language, string>
+                {
+                    {Language.English, "Per-Language Supplements"},
+                    {Language.Chinese, "按语言增补"}
+                }
+            },
+            {"Prompt_TranslationSupplement", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translation Supplement"},
+                    {Language.Chinese, "翻译增补"}
+                }
+            },
+            {"Prompt_ReviewSupplement", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review Supplement"},
+                    {Language.Chinese, "审阅增补"}
+                }
+            },
+            {"Prompt_Notes", new Dictionary<Language, string>
+                {
+                    {Language.English, "Notes"},
+                    {Language.Chinese, "备注"}
+                }
+            },
+            {"Prompt_ExportJSON", new Dictionary<Language, string>
+                {
+                    {Language.English, "Export Supplements JSON"},
+                    {Language.Chinese, "导出增补JSON"}
+                }
+            },
+            {"Prompt_ImportJSON", new Dictionary<Language, string>
+                {
+                    {Language.English, "Import Supplements JSON"},
+                    {Language.Chinese, "导入增补JSON"}
+                }
+            },
+            {"Prompt_OpenAISettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Open AI Translator Settings"},
+                    {Language.Chinese, "打开AI翻译设置"}
+                }
+            },
+            {"PromptSettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Prompt Settings"},
+                    {Language.Chinese, "提示词设置"}
+                }
+            },
+            {"OpenPromptSettings", new Dictionary<Language, string>
+                {
+                    {Language.English, "Open Prompt Settings"},
+                    {Language.Chinese, "打开提示词设置"}
+                }
+            },
+*/

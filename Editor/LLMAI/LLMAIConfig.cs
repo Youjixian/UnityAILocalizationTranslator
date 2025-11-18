@@ -69,8 +69,12 @@ namespace CardGame.Editor.LLMAI
         public string translationSystemPromptTemplate = "";
         [TextArea(3, 10)]
         public string reviewSystemPromptTemplate = "";
+        [Obsolete]
         [TextArea(3, 10)]
         public string fixSystemPromptTemplate = "";
+
+        public bool useLanguageSupplementPrompts = false;
+        public bool enablePromptLogs = false;
 
         public void SaveChanges()
         {

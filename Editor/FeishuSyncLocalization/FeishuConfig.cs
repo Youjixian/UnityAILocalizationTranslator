@@ -55,6 +55,7 @@ public class FeishuConfig : ScriptableObject
     public string AppId = "";
     public string AppSecret = "";
     public string TableId = "";
+    public bool EnableLogs = false;
 
     public void SaveChanges()
     {
@@ -63,4 +64,4 @@ public class FeishuConfig : ScriptableObject
         AssetDatabase.SaveAssets();
         #endif
     }
-} 
+}

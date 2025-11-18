@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using UnityEngine.Networking;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.Localization;
+using System.Linq;
 
 namespace CardGame.Editor.LLMAI
 {
@@ -126,7 +128,17 @@ namespace CardGame.Editor.LLMAI
                 systemPrompt += $" {additionalContext}";
             }
 
-            systemPrompt += " Critically, you must only translate the text found in the user prompt. Do not translate any part of this system message, including context descriptions or keys. Preserve the original text's format and style in your translation. Return only the translated text and nothing else.";
+            if (LLMAIConfig.Instance.useLanguageSupplementPrompts)
+            {
+                var locales = LocalizationEditorSettings.GetLocales();
+                var locale = locales.FirstOrDefault(l => string.Equals(l.LocaleName, targetLanguage, System.StringComparison.OrdinalIgnoreCase) || string.Equals(l.Identifier.Code, targetLanguage, System.StringComparison.OrdinalIgnoreCase));
+                var langCode = locale != null ? locale.Identifier.Code : null;
+                var profile = LanguagePromptConfig.Instance.GetProfile(langCode);
+                if (profile != null && !string.IsNullOrEmpty(profile.translationSupplement))
+                {
+                    systemPrompt += " " + profile.translationSupplement;
+                }
+            }
 
             var messages = new List<Message>
             {
@@ -142,8 +154,10 @@ namespace CardGame.Editor.LLMAI
                 }
             };
 
-            // 添加日志输出
-            Debug.Log($"[AI翻译] 发送翻译请求:\n系统提示词: {systemPrompt}\n用户提示词: {userPrompt}");
+            if (LLMAIConfig.Instance.enablePromptLogs)
+            {
+                Debug.Log($"[AI翻译] 发送翻译请求:\n系统提示词: {systemPrompt}\n用户提示词: {userPrompt}");
+            }
 
             var requestData = new LLMAIRequest
             {
@@ -211,21 +225,27 @@ namespace CardGame.Editor.LLMAI
                 return string.Empty;
             }
 
+            var locales = LocalizationEditorSettings.GetLocales();
+            var srcLocale = locales.FirstOrDefault(l => string.Equals(l.LocaleName, sourceLanguage, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Identifier.Code, sourceLanguage, StringComparison.OrdinalIgnoreCase));
+            var tgtLocale = locales.FirstOrDefault(l => string.Equals(l.LocaleName, targetLanguage, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Identifier.Code, targetLanguage, StringComparison.OrdinalIgnoreCase));
+            string srcName = srcLocale?.LocaleName ?? sourceLanguage;
+            string srcCode = srcLocale?.Identifier.Code ?? sourceLanguage;
+            string tgtName = tgtLocale?.LocaleName ?? targetLanguage;
+            string tgtCode = tgtLocale?.Identifier.Code ?? targetLanguage;
+
             var sb = new StringBuilder();
-            sb.AppendLine($"Source ({sourceLanguage}):\n{sourceText}");
-            sb.AppendLine($"Target ({targetLanguage}):\n{targetText}");
+            sb.AppendLine($"Source Language: {srcName} ({srcCode})");
+            sb.AppendLine("Source Text:");
+            sb.AppendLine(sourceText ?? string.Empty);
+            sb.AppendLine($"Target Language: {tgtName} ({tgtCode})");
+            sb.AppendLine("Target Text:");
+            sb.AppendLine(targetText ?? string.Empty);
             string userPrompt = sb.ToString();
 
             var systemPromptBuilder = new StringBuilder();
-            if (!string.IsNullOrEmpty(LLMAIConfig.Instance.reviewSystemPromptTemplate))
+            if (!string.IsNullOrEmpty(constraints))
             {
-                systemPromptBuilder.Append(LLMAIConfig.Instance.reviewSystemPromptTemplate
-                    .Replace("{sourceLanguage}", sourceLanguage ?? string.Empty)
-                    .Replace("{targetLanguage}", targetLanguage ?? string.Empty));
-            }
-            else
-            {
-                systemPromptBuilder.Append($"You are a professional localization reviewer for a PC card game. Review the target translation against the source {sourceLanguage} text for fidelity, terminology consistency, placeholder preservation, and formatting. Output either 'OK' if no issues or a concise list of issues. Respond in Simplified Chinese.");
+                systemPromptBuilder.Append(constraints);
             }
             if (!string.IsNullOrEmpty(description))
             {
@@ -235,11 +255,19 @@ namespace CardGame.Editor.LLMAI
             {
                 systemPromptBuilder.Append($" {additionalContext}");
             }
-            if (!string.IsNullOrEmpty(constraints))
+            if (LLMAIConfig.Instance.useLanguageSupplementPrompts)
             {
-                systemPromptBuilder.Append($" Requirements: {constraints}");
+                var langProfile = LanguagePromptConfig.Instance.GetProfile(tgtCode);
+                if (langProfile != null && !string.IsNullOrEmpty(langProfile.reviewSupplement))
+                {
+                    systemPromptBuilder.Append(" ").Append(langProfile.reviewSupplement);
+                }
             }
-            systemPromptBuilder.Append(" Critically, analyze only the user prompt texts; do not rewrite them. Preserve placeholders like {0}, @, {name}, %d, and similar patterns.");
+
+            if (LLMAIConfig.Instance.enablePromptLogs)
+            {
+                Debug.Log($"[AI审阅] 发送审阅请求:\n系统提示词: {systemPromptBuilder}\n用户提示词: {userPrompt}");
+            }
 
             var messages = new List<Message>
             {

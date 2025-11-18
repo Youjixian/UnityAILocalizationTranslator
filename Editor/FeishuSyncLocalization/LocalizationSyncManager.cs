@@ -976,6 +976,30 @@ public class LocalizationSyncManager
             var updateBatch = new List<(string recordId, Dictionary<string, object> fields)>();
             var createBatch = new List<Dictionary<string, object>>();
 
+            var requiredFields = new List<(string name, int type)> { ("ReviewStatus", 1) };
+            var langs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (_, reviewText) in reviewByKey)
+            {
+                if (string.IsNullOrEmpty(reviewText)) continue;
+                var linesPre = reviewText.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var line in linesPre)
+                {
+                    var idx = line.IndexOf(':');
+                    if (idx > 0)
+                    {
+                        var lang = line.Substring(0, idx).Trim();
+                        if (!string.IsNullOrEmpty(lang) && langs.Add(lang))
+                        {
+                            requiredFields.Add(($"Review_{lang}", 1));
+                        }
+                    }
+                }
+            }
+            if (requiredFields.Count > 0)
+            {
+                await _feishuService.EnsureFieldsExist(tableId, requiredFields);
+            }
+
             foreach (var (key, reviewText) in reviewByKey)
             {
                 if (string.IsNullOrEmpty(key)) continue;

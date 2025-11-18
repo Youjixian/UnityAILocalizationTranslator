@@ -35,12 +35,17 @@ public class FeishuConfigWindow : EditorWindow
         EditorGUILayout.EndHorizontal();
 
         string newTableId = EditorGUILayout.TextField(I18N.T("TableDefinition"), FeishuConfig.Instance.TableId);
+        bool newEnableLogs = EditorGUILayout.Toggle(
+            new GUIContent(I18N.T("FeishuEnableLogs"), I18N.T("FeishuEnableLogs")),
+            FeishuConfig.Instance.EnableLogs
+        );
         
         if (EditorGUI.EndChangeCheck())
         {
             FeishuConfig.Instance.AppId = newAppId;
             FeishuConfig.Instance.AppSecret = newAppSecret;
             FeishuConfig.Instance.TableId = newTableId;
+            FeishuConfig.Instance.EnableLogs = newEnableLogs;
             FeishuConfig.Instance.SaveChanges();
         }
 
@@ -75,4 +80,4 @@ public class FeishuConfigWindow : EditorWindow
             EditorUtility.ClearProgressBar();
         }
     }
-} 
+}

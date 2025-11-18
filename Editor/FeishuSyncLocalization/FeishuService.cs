@@ -14,12 +14,13 @@ public class FeishuService
 {
     private const string BASE_URL = "https://open.feishu.cn/open-apis/";
     private static readonly HttpClient _httpClient = new HttpClient();
+    private static bool LogEnabled => FeishuConfig.Instance.EnableLogs;
 
     public async Task<string> GetAccessToken()
     {
         try
         {
-            Debug.Log("[飞书API] 开始获取访问令牌...");
+            if (LogEnabled) Debug.Log("[飞书API] 开始获取访问令牌...");
             
             var config = FeishuConfig.Instance;
             if (string.IsNullOrEmpty(config.AppId) || string.IsNullOrEmpty(config.AppSecret))
@@ -33,14 +34,14 @@ public class FeishuService
                 app_secret = config.AppSecret
             };
 
-            Debug.Log($"[飞书API] 请求新的访问令牌，AppId: {config.AppId}");
+            if (LogEnabled) Debug.Log($"[飞书API] 请求新的访问令牌，AppId: {config.AppId}");
             var response = await PostAsync("auth/v3/tenant_access_token/internal/", requestBody, false);
             var result = JObject.Parse(response);
 
             if (result["code"].Value<int>() == 0)
             {
                 var token = result["tenant_access_token"].Value<string>();
-                Debug.Log("[飞书API] 成功获取新的访问令牌");
+                if (LogEnabled) Debug.Log("[飞书API] 成功获取新的访问令牌");
                 return token;
             }
 
@@ -66,7 +67,7 @@ public class FeishuService
     {
         try
         {
-            Debug.Log("[飞书API] 开始获取表格列表...");
+            if (LogEnabled) Debug.Log("[飞书API] 开始获取表格列表...");
             var config = FeishuConfig.Instance;
             
             if (string.IsNullOrEmpty(config.TableId))
@@ -85,7 +86,7 @@ public class FeishuService
             }
 
             var tables = result["data"]["items"] as JArray;
-            Debug.Log($"[飞书API] 成功获取表格列表，共 {tables?.Count ?? 0} 个表格");
+            if (LogEnabled) Debug.Log($"[飞书API] 成功获取表格列表，共 {tables?.Count ?? 0} 个表格");
             return tables;
         }
         catch (Exception ex)
@@ -99,7 +100,7 @@ public class FeishuService
     {
         try
         {
-            Debug.Log($"[飞书API] 发起GET请求: {endpoint}");
+            if (LogEnabled) Debug.Log($"[飞书API] 发起GET请求: {endpoint}");
             var token = await GetAccessToken();
             var request = new HttpRequestMessage(HttpMethod.Get, BASE_URL + endpoint);
             request.Headers.Add("Authorization", $"Bearer {token}");
@@ -113,7 +114,7 @@ public class FeishuService
                 throw new HttpRequestException($"HTTP请求失败: {response.StatusCode}");
             }
 
-            Debug.Log($"[飞书API] GET请求成功: {endpoint}");
+            if (LogEnabled) Debug.Log($"[飞书API] GET请求成功: {endpoint}");
             return content;
         }
         catch (Exception ex)
@@ -127,9 +128,9 @@ public class FeishuService
     {
         try
         {
-            Debug.Log($"[飞书API] 发起POST请求: {endpoint}");
+            if (LogEnabled) Debug.Log($"[飞书API] 发起POST请求: {endpoint}");
             var jsonData = JsonConvert.SerializeObject(data);
-            Debug.Log($"[飞书API] 请求数据: {jsonData}");
+            if (LogEnabled) Debug.Log($"[飞书API] 请求数据: {jsonData}");
 
             var request = new HttpRequestMessage(HttpMethod.Post, BASE_URL + endpoint);
             
@@ -151,8 +152,11 @@ public class FeishuService
                 throw new HttpRequestException($"HTTP请求失败: {response.StatusCode}");
             }
 
-            Debug.Log($"[飞书API] POST请求成功: {endpoint}");
-            Debug.Log($"[飞书API] 响应内容: {responseContent}");
+            if (LogEnabled)
+            {
+                Debug.Log($"[飞书API] POST请求成功: {endpoint}");
+                Debug.Log($"[飞书API] 响应内容: {responseContent}");
+            }
             return responseContent;
         }
         catch (Exception ex)
@@ -166,7 +170,7 @@ public class FeishuService
     {
         try
         {
-            Debug.Log($"[飞书API] 开始创建表格: {tableName}");
+            if (LogEnabled) Debug.Log($"[飞书API] 开始创建表格: {tableName}");
             var config = FeishuConfig.Instance;
             
             // 获取所有支持的语言
@@ -213,7 +217,7 @@ public class FeishuService
                 }
             };
 
-            Debug.Log($"[飞书API] 创建表格请求数据: {JsonConvert.SerializeObject(requestBody, Formatting.Indented)}");
+            if (LogEnabled) Debug.Log($"[飞书API] 创建表格请求数据: {JsonConvert.SerializeObject(requestBody, Formatting.Indented)}");
 
             var token = await GetAccessToken();
             var content = new StringContent(
@@ -229,7 +233,7 @@ public class FeishuService
             var response = await _httpClient.SendAsync(request);
             var responseContent = await response.Content.ReadAsStringAsync();
             
-            Debug.Log($"[飞书API] 创建表格响应: {responseContent}");
+            if (LogEnabled) Debug.Log($"[飞书API] 创建表格响应: {responseContent}");
             
             var result = JObject.Parse(responseContent);
             if (result["code"].Value<int>() != 0)
@@ -502,7 +506,7 @@ public class FeishuService
         {
             if (!currentFieldNames.Contains(fieldName))
             {
-                Debug.Log($"[飞书API] 创建字段: {fieldName}");
+                if (LogEnabled) Debug.Log($"[飞书API] 创建字段: {fieldName}");
                 await CreateField(tableId, fieldName, fieldType);
             }
         }
@@ -541,6 +545,7 @@ public class FeishuService
 
         var response = await _httpClient.SendAsync(request);
         var responseContent = await response.Content.ReadAsStringAsync();
+        if (LogEnabled) Debug.Log($"[飞书API] search 响应: {responseContent}");
         var result = JObject.Parse(responseContent);
 
         if (result["code"].Value<int>() != 0)

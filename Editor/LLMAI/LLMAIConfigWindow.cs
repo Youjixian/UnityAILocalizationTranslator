@@ -111,7 +111,16 @@ namespace CardGame.Editor.LLMAI
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(I18N.T("OpenPromptSettings"), GUILayout.ExpandWidth(true)))
             {
-                PromptSettingsWindow.ShowWindow();
+                var t = System.Type.GetType("CardGame.Editor.LLMAI.PromptSettingsWindow");
+                if (t != null)
+                {
+                    var m = t.GetMethod("ShowWindow", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                    m?.Invoke(null, null);
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog(I18N.T("Error"), I18N.CurrentLanguage == I18N.Language.Chinese ? "未找到提示词设置窗口，请确认该功能在当前包版本中可用。" : "Prompt Settings Window not found in this package.", I18N.T("OK"));
+                }
             }
             EditorGUILayout.EndHorizontal();
 

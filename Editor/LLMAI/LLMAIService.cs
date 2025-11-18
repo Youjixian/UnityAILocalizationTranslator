@@ -133,10 +133,10 @@ namespace CardGame.Editor.LLMAI
                 var locales = LocalizationEditorSettings.GetLocales();
                 var locale = locales.FirstOrDefault(l => string.Equals(l.LocaleName, targetLanguage, System.StringComparison.OrdinalIgnoreCase) || string.Equals(l.Identifier.Code, targetLanguage, System.StringComparison.OrdinalIgnoreCase));
                 var langCode = locale != null ? locale.Identifier.Code : null;
-                var profile = LanguagePromptConfig.Instance.GetProfile(langCode);
-                if (profile != null && !string.IsNullOrEmpty(profile.translationSupplement))
+                var supplement = TryGetLanguageTranslationSupplement(langCode);
+                if (!string.IsNullOrEmpty(supplement))
                 {
-                    systemPrompt += " " + profile.translationSupplement;
+                    systemPrompt += " " + supplement;
                 }
             }
 
@@ -257,10 +257,10 @@ namespace CardGame.Editor.LLMAI
             }
             if (LLMAIConfig.Instance.useLanguageSupplementPrompts)
             {
-                var langProfile = LanguagePromptConfig.Instance.GetProfile(tgtCode);
-                if (langProfile != null && !string.IsNullOrEmpty(langProfile.reviewSupplement))
+                var reviewSupp = TryGetLanguageReviewSupplement(tgtCode);
+                if (!string.IsNullOrEmpty(reviewSupp))
                 {
-                    systemPromptBuilder.Append(" ").Append(langProfile.reviewSupplement);
+                    systemPromptBuilder.Append(" ").Append(reviewSupp);
                 }
             }
 
@@ -416,3 +416,38 @@ namespace CardGame.Editor.LLMAI
         }
     }
 }
+        private static string TryGetLanguageTranslationSupplement(string langCode)
+        {
+            try
+            {
+                var t = System.Type.GetType("CardGame.Editor.LLMAI.LanguagePromptConfig");
+                if (t == null) return null;
+                var instProp = t.GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                var instance = instProp?.GetValue(null);
+                if (instance == null) return null;
+                var getProfile = t.GetMethod("GetProfile", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                var profile = getProfile?.Invoke(instance, new object[] { langCode });
+                if (profile == null) return null;
+                var transProp = profile.GetType().GetProperty("translationSupplement");
+                return transProp?.GetValue(profile) as string;
+            }
+            catch { return null; }
+        }
+
+        private static string TryGetLanguageReviewSupplement(string langCode)
+        {
+            try
+            {
+                var t = System.Type.GetType("CardGame.Editor.LLMAI.LanguagePromptConfig");
+                if (t == null) return null;
+                var instProp = t.GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                var instance = instProp?.GetValue(null);
+                if (instance == null) return null;
+                var getProfile = t.GetMethod("GetProfile", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                var profile = getProfile?.Invoke(instance, new object[] { langCode });
+                if (profile == null) return null;
+                var reviewProp = profile.GetType().GetProperty("reviewSupplement");
+                return reviewProp?.GetValue(profile) as string;
+            }
+            catch { return null; }
+        }

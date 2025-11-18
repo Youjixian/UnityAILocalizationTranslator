@@ -64,6 +64,14 @@ namespace CardGame.Editor.LLMAI
         public float retryDelaySeconds = 1f;
         public float timeoutSeconds = 30f;
 
+        // 提示词模板
+        [TextArea(3, 10)]
+        public string translationSystemPromptTemplate = "";
+        [TextArea(3, 10)]
+        public string reviewSystemPromptTemplate = "";
+        [TextArea(3, 10)]
+        public string fixSystemPromptTemplate = "";
+
         public void SaveChanges()
         {
             #if UNITY_EDITOR
@@ -72,4 +80,4 @@ namespace CardGame.Editor.LLMAI
             #endif
         }
     }
-} 
+}

@@ -7,6 +7,7 @@ namespace CardGame.Editor.LLMAI
     public class LLMAIConfigWindow : EditorWindow
     {
         private Vector2 scrollPosition;
+        private GUIStyle promptTextAreaStyle;
 
         [MenuItem("Tools/Localization/AI Translator Settings")]
         public static void ShowWindow()
@@ -96,6 +97,51 @@ namespace CardGame.Editor.LLMAI
             EditorGUILayout.Space(20);
             EditorGUILayout.HelpBox(I18N.T("APIConfigHelpText"), MessageType.Info);
 
+            EditorGUILayout.Space(20);
+            EditorGUILayout.LabelField(I18N.T("PromptTemplates"), EditorStyles.boldLabel);
+            EditorGUILayout.Space(5);
+
+            if (promptTextAreaStyle == null)
+            {
+                promptTextAreaStyle = new GUIStyle(EditorStyles.textArea);
+                promptTextAreaStyle.wordWrap = true;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            // Translation prompt
+            EditorGUILayout.LabelField(I18N.T("TranslationPromptTemplate"));
+            var transTplInitial = string.IsNullOrEmpty(LLMAIConfig.Instance.translationSystemPromptTemplate)
+                ? I18N.T("DefaultTranslationPrompt")
+                : LLMAIConfig.Instance.translationSystemPromptTemplate;
+            float calcWidth1 = position.width - 40f;
+            float calcHeight1 = promptTextAreaStyle.CalcHeight(new GUIContent(transTplInitial), calcWidth1);
+            var transTpl = GUILayout.TextArea(transTplInitial, promptTextAreaStyle, GUILayout.Height(Mathf.Max(80f, Mathf.Min(calcHeight1, 400f))), GUILayout.ExpandWidth(true));
+
+            // Review prompt
+            EditorGUILayout.LabelField(I18N.T("ReviewPromptTemplate"));
+            var reviewTplInitial = string.IsNullOrEmpty(LLMAIConfig.Instance.reviewSystemPromptTemplate)
+                ? I18N.T("DefaultReviewPrompt")
+                : LLMAIConfig.Instance.reviewSystemPromptTemplate;
+            float calcWidth2 = position.width - 40f;
+            float calcHeight2 = promptTextAreaStyle.CalcHeight(new GUIContent(reviewTplInitial), calcWidth2);
+            var reviewTpl = GUILayout.TextArea(reviewTplInitial, promptTextAreaStyle, GUILayout.Height(Mathf.Max(80f, Mathf.Min(calcHeight2, 400f))), GUILayout.ExpandWidth(true));
+
+            // Fix prompt
+            EditorGUILayout.LabelField(I18N.T("FixPromptTemplate"));
+            var fixTplInitial = string.IsNullOrEmpty(LLMAIConfig.Instance.fixSystemPromptTemplate)
+                ? I18N.T("DefaultFixPrompt")
+                : LLMAIConfig.Instance.fixSystemPromptTemplate;
+            float calcWidth3 = position.width - 40f;
+            float calcHeight3 = promptTextAreaStyle.CalcHeight(new GUIContent(fixTplInitial), calcWidth3);
+            var fixTpl = GUILayout.TextArea(fixTplInitial, promptTextAreaStyle, GUILayout.Height(Mathf.Max(80f, Mathf.Min(calcHeight3, 400f))), GUILayout.ExpandWidth(true));
+            if (EditorGUI.EndChangeCheck())
+            {
+                LLMAIConfig.Instance.translationSystemPromptTemplate = transTpl;
+                LLMAIConfig.Instance.reviewSystemPromptTemplate = reviewTpl;
+                LLMAIConfig.Instance.fixSystemPromptTemplate = fixTpl;
+                LLMAIConfig.Instance.SaveChanges();
+            }
+
             EditorGUILayout.EndScrollView();
         }
 
@@ -121,4 +167,4 @@ namespace CardGame.Editor.LLMAI
             }
         }
     }
-} 
+}

@@ -38,6 +38,20 @@ namespace CardGame.Editor.LLMAI
         private bool isPaused = false;
         private TaskCompletionSource<bool> pauseCompletionSource;
 
+        private bool isReviewing = false;
+        private float reviewProgress = 0f;
+        private string reviewStatusMessage = "";
+        private int completedReviews = 0;
+        private int totalReviews = 0;
+        private bool reviewOnlyNonEmpty = true;
+        private bool reviewOnlyDescribed = false;
+        private bool outputToFeishuReview = true;
+        private string reviewConstraints = "";
+        private Dictionary<string, List<string>> _reviewIssuesByKey = new Dictionary<string, List<string>>();
+        private GUIStyle reviewTextAreaStyle;
+        private bool translateOnlyFailed = false;
+        private bool translateWithReviewComments = false;
+
         [MenuItem("Tools/Localization/AI Translator")]
         public static void ShowWindow()
         {
@@ -183,6 +197,20 @@ namespace CardGame.Editor.LLMAI
                 }
             }
 
+            // 仅翻译审阅不合格项目
+            translateOnlyFailed = EditorGUILayout.Toggle(
+                new GUIContent(I18N.T("TranslateOnlyFailed"),
+                    I18N.CurrentLanguage == I18N.Language.Chinese ? "仅对飞书审阅不合格的条目进行翻译" : "Translate only items failed in Feishu review"),
+                translateOnlyFailed
+            );
+
+            // 携带审阅意见进行重新翻译
+            translateWithReviewComments = EditorGUILayout.Toggle(
+                new GUIContent(I18N.T("TranslateWithReviewComments"),
+                    I18N.CurrentLanguage == I18N.Language.Chinese ? "把飞书审阅意见作为提示上下文参与翻译" : "Include Feishu review comments in translation context"),
+                translateWithReviewComments
+            );
+
             EditorGUILayout.Space(10);
             showAdvancedOptions = EditorGUILayout.Foldout(showAdvancedOptions, I18N.T("TargetLanguageSelection"));
             if (showAdvancedOptions)
@@ -205,7 +233,7 @@ namespace CardGame.Editor.LLMAI
             if (!isTranslating)
             {
                 GUI.enabled = selectedCollection != null && languageToggles.Any(kvp => kvp.Value);
-                if (GUILayout.Button(I18N.T("StartTranslation")))
+                if (GUILayout.Button(I18N.T("StartTranslation"), GUILayout.ExpandWidth(true)))
                 {
                     StartTranslation();
                 }
@@ -276,6 +304,96 @@ namespace CardGame.Editor.LLMAI
                     }
                 }
             }
+
+            EditorGUILayout.Space(20);
+            EditorGUILayout.LabelField(I18N.T("ReviewOptions"), EditorStyles.boldLabel);
+            EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
+            EditorGUILayout.LabelField(I18N.T("ReviewPrompt"));
+            if (string.IsNullOrEmpty(reviewConstraints))
+            {
+                reviewConstraints = I18N.T("DefaultReviewPrompt");
+            }
+            if (reviewTextAreaStyle == null)
+            {
+                reviewTextAreaStyle = new GUIStyle(EditorStyles.textArea);
+                reviewTextAreaStyle.wordWrap = true;
+            }
+            var content = new GUIContent(reviewConstraints);
+            float calcWidth = position.width - 40f;
+            float calcHeight = reviewTextAreaStyle.CalcHeight(content, calcWidth);
+            reviewConstraints = EditorGUILayout.TextArea(reviewConstraints, reviewTextAreaStyle, GUILayout.Height(Mathf.Max(60f, calcHeight)), GUILayout.ExpandWidth(true));
+            reviewOnlyNonEmpty = EditorGUILayout.Toggle(I18N.T("ReviewOnlyNonEmpty"), reviewOnlyNonEmpty);
+            reviewOnlyDescribed = EditorGUILayout.Toggle(I18N.T("ReviewOnlyDescribed"), reviewOnlyDescribed);
+            outputToFeishuReview = EditorGUILayout.Toggle(I18N.T("OutputToFeishuReview"), outputToFeishuReview);
+            EditorGUILayout.EndVertical();
+
+            if (!isReviewing)
+            {
+                GUI.enabled = selectedCollection != null && languageToggles.Any(kvp => kvp.Value);
+                var reviewTooltip = I18N.CurrentLanguage == I18N.Language.Chinese
+                    ? "审阅：从飞书读取并审阅飞书内容，写回飞书审阅列。"
+                    : "Review: read from Feishu and review Feishu content, write back review columns.";
+                if (GUILayout.Button(new GUIContent(I18N.T("StartReview"), reviewTooltip), GUILayout.ExpandWidth(true)))
+                {
+                    StartFeishuReview();
+                }
+                GUI.enabled = true;
+            }
+            else
+            {
+                EditorGUILayout.Space(5);
+                EditorGUILayout.LabelField(reviewStatusMessage, EditorStyles.boldLabel);
+                var progressRect2 = EditorGUILayout.GetControlRect(false, 20);
+                var progressBarRect2 = new Rect(progressRect2.x + 2, progressRect2.y + 2, progressRect2.width - 4, progressRect2.height - 4);
+                EditorGUI.DrawRect(progressBarRect2, new Color(0.2f, 0.2f, 0.2f));
+                var fillRect2 = new Rect(progressBarRect2.x, progressBarRect2.y, progressBarRect2.width * reviewProgress, progressBarRect2.height);
+                EditorGUI.DrawRect(fillRect2, new Color(0.2f, 0.5f, 0.7f));
+                var style2 = new GUIStyle(EditorStyles.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = Color.white }
+                };
+                EditorGUI.LabelField(progressBarRect2, $"{(reviewProgress * 100):F1}%", style2);
+                EditorGUILayout.Space(5);
+                if (GUILayout.Button(isPaused ? I18N.T("ContinueReview") : I18N.T("CancelReview"), GUILayout.ExpandWidth(true)))
+                {
+                    if (isPaused)
+                    {
+                        if (EditorUtility.DisplayDialog(
+                            I18N.T("ConfirmContinue"),
+                            I18N.T("ConfirmContinueMessage"),
+                            I18N.T("OK"),
+                            I18N.T("Cancel")
+                        ))
+                        {
+                            isPaused = false;
+                            pauseCompletionSource?.TrySetResult(false);
+                        }
+                    }
+                    else
+                    {
+                        isPaused = true;
+                        pauseCompletionSource = new TaskCompletionSource<bool>();
+                        if (EditorUtility.DisplayDialog(
+                            I18N.T("ConfirmCancel"),
+                            I18N.T("ConfirmCancelMessage"),
+                            I18N.T("OK"),
+                            I18N.T("Cancel")
+                        ))
+                        {
+                            _cancellationTokenSource?.Cancel();
+                            pauseCompletionSource?.TrySetResult(true);
+                        }
+                        else
+                        {
+                            isPaused = false;
+                            pauseCompletionSource?.TrySetResult(false);
+                        }
+                    }
+                }
+            }
+
+            // 移除自动修复进度显示
 
             EditorGUILayout.EndScrollView();
         }
@@ -348,8 +466,40 @@ namespace CardGame.Editor.LLMAI
             }
 
             // 在主线程预先获取所有需要的信息
-            var translationTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable)>();
+            var translationTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback)>();
             var targetTables = new Dictionary<string, StringTable>();
+            Dictionary<string, Dictionary<string, string>> reviewByKeyLang = null;
+            if (translateOnlyFailed || translateWithReviewComments)
+            {
+                try
+                {
+                    var tables2 = await _feishuService.ListTables();
+                    var matchingTable2 = tables2.FirstOrDefault(t => t["name"].Value<string>() == selectedCollection.TableCollectionName);
+                    if (matchingTable2 != null)
+                    {
+                        var tableId2 = matchingTable2["table_id"].Value<string>();
+                        var records2 = await _feishuService.ListRecords(tableId2);
+                        reviewByKeyLang = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var record in records2)
+                        {
+                            var fields = record["fields"] as JObject;
+                            var key = fields["Key"]?.Value<string>();
+                            if (string.IsNullOrEmpty(key)) continue;
+                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var lang in languageToggles.Keys)
+                            {
+                                var rv = fields[$"Review_{lang}"]?.Value<string>();
+                                if (!string.IsNullOrEmpty(rv)) dict[lang] = rv;
+                            }
+                            if (dict.Count > 0) reviewByKeyLang[key] = dict;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"读取飞书审阅数据失败: {ex}");
+                }
+            }
             
             foreach (var langCode in targetLanguages)
             {
@@ -380,10 +530,28 @@ namespace CardGame.Editor.LLMAI
                         shouldTranslate = _keyDescriptions.ContainsKey(entry.Key);
                     }
 
+                    // 可选：仅翻译审阅不合格项目
+                    string reviewFeedback = null;
+                    if (shouldTranslate && (translateOnlyFailed || translateWithReviewComments) && reviewByKeyLang != null)
+                    {
+                        if (reviewByKeyLang.TryGetValue(entry.Key, out var langMap) && langMap.TryGetValue(langCode, out var rv))
+                        {
+                            reviewFeedback = rv;
+                            if (translateOnlyFailed)
+                            {
+                                shouldTranslate = !IsOkText(rv);
+                            }
+                        }
+                        else if (translateOnlyFailed)
+                        {
+                            shouldTranslate = false;
+                        }
+                    }
+
                     // 如果满足所有启用的条件，则添加到翻译任务中
                     if (shouldTranslate)
                     {
-                        translationTasks.Add((langCode, languageName, entry.Id, sourceEntry.Value, table));
+                        translationTasks.Add((langCode, languageName, entry.Id, sourceEntry.Value, table, reviewFeedback));
                     }
                 }
             }
@@ -420,7 +588,7 @@ namespace CardGame.Editor.LLMAI
                 // 创建信号量来控制并发请求数
                 using (var semaphore = new SemaphoreSlim(LLMAIConfig.Instance.maxConcurrentRequests))
                 {
-                    var remainingTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable)>(translationTasks);
+                    var remainingTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback)>(translationTasks);
                     var processedTasks = new HashSet<(string langCode, long entryId)>();
                     var currentBatchTasks = new List<Task>();
                     
@@ -441,7 +609,7 @@ namespace CardGame.Editor.LLMAI
                             await Task.Delay(TimeSpan.FromSeconds(delaySeconds), _cancellationTokenSource.Token);
                         }
 
-                        var currentTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable)>(remainingTasks);
+                        var currentTasks = new List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback)>(remainingTasks);
                         remainingTasks.Clear();
 
                         // 替换 Chunk 方法，使用自定义的批处理逻辑
@@ -530,10 +698,10 @@ namespace CardGame.Editor.LLMAI
         }
 
         private async Task ProcessTranslationTask(
-            (string langCode, string langName, long entryId, string sourceText, StringTable targetTable) task,
+            (string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback) task,
             SemaphoreSlim semaphore,
             HashSet<(string langCode, long entryId)> processedTasks,
-            List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable)> remainingTasks,
+            List<(string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback)> remainingTasks,
             int retryCount,
             CancellationToken cancellationToken)
         {
@@ -582,7 +750,9 @@ namespace CardGame.Editor.LLMAI
                     description,
                     null,
                     null,
-                    additionalContext
+                    translateWithReviewComments && !string.IsNullOrEmpty(task.reviewFeedback)
+                        ? (string.IsNullOrEmpty(additionalContext) ? ($"Review feedback: {task.reviewFeedback}") : (additionalContext + " | Review feedback: " + task.reviewFeedback))
+                        : additionalContext
                 );
 
                 string translatedText;
@@ -663,7 +833,7 @@ namespace CardGame.Editor.LLMAI
         }
 
         private async Task UpdateTranslationResult(
-            (string langCode, string langName, long entryId, string sourceText, StringTable targetTable) task,
+            (string langCode, string langName, long entryId, string sourceText, StringTable targetTable, string reviewFeedback) task,
             string translatedText,
             HashSet<(string langCode, long entryId)> processedTasks)
         {
@@ -852,5 +1022,391 @@ namespace CardGame.Editor.LLMAI
         {
             // Implementation of HandleTranslation method
         }
+
+        private async void StartFeishuReview()
+        {
+            if (selectedCollection == null) return;
+
+            var targetLanguages = languageToggles
+                .Where(kvp => kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            if (targetLanguages.Count == 0)
+            {
+                EditorUtility.DisplayDialog(I18N.T("Error"), I18N.T("NoItemsToTranslate"), I18N.T("OK"));
+                return;
+            }
+
+            // 从飞书读取审阅数据源
+
+            try
+            {
+                reviewStatusMessage = I18N.T("LoadingData");
+                reviewProgress = 0f;
+                Repaint();
+                var tables = await _feishuService.ListTables();
+                var matchingTable = tables.FirstOrDefault(t => t["name"].Value<string>() == selectedCollection.TableCollectionName);
+                if (matchingTable == null)
+                {
+                    EditorUtility.DisplayDialog(I18N.T("Error"), $"飞书中未找到表: {selectedCollection.TableCollectionName}", I18N.T("OK"));
+                    return;
+                }
+                var tableId = matchingTable["table_id"].Value<string>();
+                var records = await _feishuService.ListRecords(tableId);
+                _keyDescriptions.Clear();
+                foreach (var record in records)
+                {
+                    var fields = record["fields"] as JObject;
+                    var key = fields["Key"]?.Value<string>();
+                    var description = fields["Description"]?.Value<string>();
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(description))
+                    {
+                        _keyDescriptions[key] = description;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"读取飞书数据时发生错误: {ex}");
+                EditorUtility.DisplayDialog(I18N.T("Error"), I18N.T("LoadingData"), I18N.T("OK"));
+                return;
+            }
+
+            var reviewTasks = new List<(string langCode, string langName, string entryKey, string sourceText, string targetText)>();
+            var locales = LocalizationEditorSettings.GetLocales();
+            var localeMap = locales.ToDictionary(l => l.Identifier.Code, l => l.LocaleName);
+            var tables2 = await _feishuService.ListTables();
+            var matchingTable2 = tables2.FirstOrDefault(t => t["name"].Value<string>() == selectedCollection.TableCollectionName);
+            var tableId2 = matchingTable2["table_id"].Value<string>();
+            var records2 = await _feishuService.ListRecords(tableId2);
+            foreach (var record in records2)
+            {
+                var fields = record["fields"] as JObject;
+                var key = fields["Key"]?.Value<string>();
+                if (string.IsNullOrEmpty(key)) continue;
+                var sourceText = fields[sourceLanguage]?.Value<string>();
+                foreach (var langCode in targetLanguages)
+                {
+                    var targetText = fields[langCode]?.Value<string>();
+                    if (reviewOnlyNonEmpty && string.IsNullOrEmpty(targetText)) continue;
+                    if (reviewOnlyDescribed && !_keyDescriptions.ContainsKey(key)) continue;
+                    var langName = localeMap.TryGetValue(langCode, out var nm) ? nm : langCode;
+                    reviewTasks.Add((langCode, langName, key, sourceText, targetText));
+                }
+            }
+
+            if (reviewTasks.Count == 0)
+            {
+                EditorUtility.DisplayDialog(I18N.T("Confirm"), I18N.T("NoItemsToTranslate"), I18N.T("OK"));
+                return;
+            }
+
+            bool confirmed = EditorUtility.DisplayDialog(
+                I18N.T("ConfirmReview"),
+                string.Format(I18N.T("ConfirmReviewMessage"), reviewTasks.Count),
+                I18N.T("OK"),
+                I18N.T("Cancel")
+            );
+            if (!confirmed) return;
+
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            isReviewing = true;
+            reviewProgress = 0f;
+            completedReviews = 0;
+            totalReviews = reviewTasks.Count;
+            Debug.Log($"FeishuReview: Created {totalReviews} review tasks.");
+            isPaused = false;
+            pauseCompletionSource = null;
+            _reviewIssuesByKey.Clear();
+
+            try
+            {
+                using (var semaphore = new SemaphoreSlim(LLMAIConfig.Instance.maxConcurrentRequests))
+                {
+                    var remainingTasks = new List<(string langCode, string langName, string entryKey, string sourceText, string targetText)>(reviewTasks);
+                    var processedTasks = new HashSet<(string langCode, string entryKey)>();
+                    var currentBatchTasks = new List<Task>();
+
+                    for (int retryCount = 0; retryCount < LLMAIConfig.Instance.maxRetries && remainingTasks.Count > 0; retryCount++)
+                    {
+                        if (_cancellationTokenSource.Token.IsCancellationRequested)
+                        {
+                            ShowReviewResult(true);
+                            return;
+                        }
+
+                        if (retryCount > 0)
+                        {
+                            int delaySeconds = (int)(LLMAIConfig.Instance.retryDelaySeconds * Math.Pow(2.0, retryCount - 1));
+                            await Task.Delay(TimeSpan.FromSeconds(delaySeconds), _cancellationTokenSource.Token);
+                        }
+
+                        var currentTasks = new List<(string langCode, string langName, string entryKey, string sourceText, string targetText)>(remainingTasks);
+                        remainingTasks.Clear();
+
+                        for (int i = 0; i < currentTasks.Count; i += LLMAIConfig.Instance.maxConcurrentRequests)
+                        {
+                            if (_cancellationTokenSource.Token.IsCancellationRequested)
+                            {
+                                ShowReviewResult(true);
+                                return;
+                            }
+
+                            currentBatchTasks.Clear();
+                            var batchSize = Math.Min(LLMAIConfig.Instance.maxConcurrentRequests, currentTasks.Count - i);
+                            for (int j = 0; j < batchSize; j++)
+                            {
+                                var task = currentTasks[i + j];
+                                var t = ProcessFeishuReviewTask(
+                                    task,
+                                    semaphore,
+                                    processedTasks,
+                                    remainingTasks,
+                                    retryCount,
+                                    _cancellationTokenSource.Token
+                                );
+                                currentBatchTasks.Add(t);
+                            }
+
+                            try
+                            {
+                                await Task.WhenAll(currentBatchTasks);
+                                await Task.Delay(200, _cancellationTokenSource.Token);
+                            }
+                            catch (Exception ex)
+                            {
+                                if (ex is OperationCanceledException) throw;
+                            }
+                            Repaint();
+                        }
+
+                        if (remainingTasks.Count == 0) break;
+                    }
+
+                    await SaveAssetsAsync();
+                    if (outputToFeishuReview)
+                    {
+                        var sync = new LocalizationSyncManager();
+                        var map = new Dictionary<string, string>();
+                        var statusMap = new Dictionary<string, string>();
+                        foreach (var kv in _reviewIssuesByKey)
+                        {
+                            if (kv.Value == null || kv.Value.Count == 0) continue;
+                            var joined = string.Join("\n", kv.Value);
+                            map[kv.Key] = string.IsNullOrEmpty(joined) ? "OK" : joined;
+                            int failCount = kv.Value.Count(l => !IsOkText(l));
+                            statusMap[kv.Key] = failCount == 0 ? "通过" : $"未通过({failCount})";
+                        }
+                        await sync.UpdateReviewForTable(selectedCollection, map, statusMap);
+                    }
+                    ShowReviewResult(false);
+                }
+            }
+            catch (Exception e)
+            {
+                if (!(e is OperationCanceledException))
+                {
+                    var errorMessage = $"审阅过程中发生错误: {e.Message}\n\n" +
+                                      $"成功审阅: {completedReviews} 个条目\n" +
+                                      $"未完成: {totalReviews - completedReviews} 个条目\n" +
+                                      $"总计: {totalReviews} 个条目";
+                    EditorUtility.DisplayDialog(I18N.T("Error"), errorMessage, I18N.T("OK"));
+                }
+                else if (!hasShownResult)
+                {
+                    ShowReviewResult(true);
+                }
+                isReviewing = false;
+                _cancellationTokenSource = null;
+                Repaint();
+            }
+        }
+
+        // 自动修复功能已移除
+
+        private static System.Text.RegularExpressions.Regex _reNumeric = new System.Text.RegularExpressions.Regex("\\{[0-9]+\\}", System.Text.RegularExpressions.RegexOptions.Compiled);
+        private static System.Text.RegularExpressions.Regex _reNamed = new System.Text.RegularExpressions.Regex("\\{[A-Za-z_][A-Za-z0-9_]*\\}", System.Text.RegularExpressions.RegexOptions.Compiled);
+        private static System.Text.RegularExpressions.Regex _rePercent = new System.Text.RegularExpressions.Regex("%[dsf]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private bool ValidatePlaceholders(string originalTarget, string fixedTarget)
+        {
+            var set = new HashSet<string>();
+            foreach (System.Text.RegularExpressions.Match m in _reNumeric.Matches(originalTarget ?? string.Empty)) set.Add(m.Value);
+            foreach (System.Text.RegularExpressions.Match m in _reNamed.Matches(originalTarget ?? string.Empty)) set.Add(m.Value);
+            foreach (System.Text.RegularExpressions.Match m in _rePercent.Matches(originalTarget ?? string.Empty)) set.Add(m.Value);
+            foreach (var ph in set)
+            {
+                if (!(fixedTarget ?? string.Empty).Contains(ph)) return false;
+            }
+            return true;
+        }
+
+        private bool IsOkText(string text)
+        {
+            var t = (text ?? string.Empty).Trim();
+            if (string.Equals(t, "OK", StringComparison.OrdinalIgnoreCase)) return true;
+            if (t.EndsWith("OK")) return true;
+            if (t.Contains(": OK")) return true;
+            return false;
+        }
+
+        
+
+        
+
+        // 原基于Unity表的审阅流程已移除
+
+        private async Task UpdateReviewResult(string entryKey, string line,
+            HashSet<(string langCode, long entryId)> processedTasks,
+            (string langCode, long entryId) taskKey)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            EditorApplication.delayCall += () =>
+            {
+                if (!string.IsNullOrEmpty(entryKey))
+                {
+                    if (!_reviewIssuesByKey.TryGetValue(entryKey, out var list))
+                    {
+                        list = new List<string>();
+                        _reviewIssuesByKey[entryKey] = list;
+                    }
+                    if (!string.IsNullOrEmpty(line)) list.Add(line);
+                }
+                UpdateReviewProgress(taskKey, processedTasks);
+                tcs.TrySetResult(true);
+            };
+            await tcs.Task;
+        }
+
+        private void UpdateReviewProgress((string langCode, long entryId) taskKey, HashSet<(string langCode, long entryId)> processedTasks)
+        {
+            lock (processedTasks)
+            {
+                if (!processedTasks.Contains(taskKey))
+                {
+                    completedReviews++;
+                    processedTasks.Add(taskKey);
+                    reviewProgress = (float)completedReviews / totalReviews;
+                    reviewStatusMessage = string.Format(I18N.T("ReviewingProgress"), completedReviews, totalReviews);
+                    Repaint();
+                }
+            }
+        }
+
+        private void ShowReviewResult(bool wasCancelled)
+        {
+            var finalTitle = wasCancelled ? I18N.T("Cancelled") : I18N.T("Completed");
+            var resultMessage = string.Format(I18N.T("ReviewResult"), wasCancelled ? I18N.T("Cancelled") : I18N.T("Completed"), completedReviews, totalReviews - completedReviews, totalReviews);
+            EditorApplication.delayCall += () =>
+            {
+                AssetDatabase.SaveAssets();
+                EditorUtility.DisplayDialog(finalTitle, resultMessage, I18N.T("OK"));
+                isReviewing = false;
+                _cancellationTokenSource = null;
+                Repaint();
+            };
+        }
+
+        private async Task ProcessFeishuReviewTask(
+            (string langCode, string langName, string entryKey, string sourceText, string targetText) task,
+            SemaphoreSlim semaphore,
+            HashSet<(string langCode, string entryKey)> processedTasks,
+            List<(string langCode, string langName, string entryKey, string sourceText, string targetText)> remainingTasks,
+            int retryCount,
+            CancellationToken cancellationToken)
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                while (isPaused)
+                {
+                    if (pauseCompletionSource == null) pauseCompletionSource = new TaskCompletionSource<bool>();
+                    bool shouldCancel = await pauseCompletionSource.Task;
+                    if (shouldCancel) throw new OperationCanceledException();
+                }
+
+                string description = null;
+                string additionalContext = null;
+                if (includeDescriptionForTranslation || reviewOnlyDescribed)
+                {
+                    _keyDescriptions.TryGetValue(task.entryKey, out description);
+                }
+                if (includeLocalizationKey && !string.IsNullOrEmpty(task.entryKey))
+                {
+                    additionalContext = $"This text is associated with the key '{task.entryKey}' in a game localization system.";
+                }
+
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(LLMAIConfig.Instance.timeoutSeconds));
+
+                var reviewTask = LLMAIService.Instance.ReviewTranslation(
+                    task.sourceText,
+                    task.targetText,
+                    LocalizationEditorSettings.GetLocale(sourceLanguage)?.LocaleName ?? sourceLanguage,
+                    task.langName,
+                    task.entryKey,
+                    description,
+                    reviewConstraints,
+                    additionalContext
+                );
+
+                var completedTask = await Task.WhenAny(reviewTask, Task.Delay(-1, cancellationToken));
+                cancellationToken.ThrowIfCancellationRequested();
+                string reviewText = completedTask == reviewTask ? await reviewTask : string.Empty;
+
+                var formatted = string.IsNullOrEmpty(reviewText) ? $"{task.langCode}: OK" : $"{task.langCode}: {reviewText}";
+                await UpdateReviewResultFeishu(task.entryKey, formatted, processedTasks, (task.langCode, task.entryKey));
+            }
+            catch (Exception e)
+            {
+                if (e is OperationCanceledException) throw;
+                UpdateReviewProgressFeishu((task.langCode, task.entryKey), processedTasks);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }
+
+        private async Task UpdateReviewResultFeishu(string entryKey, string line,
+            HashSet<(string langCode, string entryKey)> processedTasks,
+            (string langCode, string entryKey) taskKey)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            EditorApplication.delayCall += () =>
+            {
+                if (!string.IsNullOrEmpty(entryKey))
+                {
+                    if (!_reviewIssuesByKey.TryGetValue(entryKey, out var list))
+                    {
+                        list = new List<string>();
+                        _reviewIssuesByKey[entryKey] = list;
+                    }
+                    if (!string.IsNullOrEmpty(line)) list.Add(line);
+                }
+                UpdateReviewProgressFeishu(taskKey, processedTasks);
+                tcs.TrySetResult(true);
+            };
+            await tcs.Task;
+        }
+
+        private void UpdateReviewProgressFeishu((string langCode, string entryKey) taskKey, HashSet<(string langCode, string entryKey)> processedTasks)
+        {
+            lock (processedTasks)
+            {
+                if (!processedTasks.Contains(taskKey))
+                {
+                    completedReviews++;
+                    processedTasks.Add(taskKey);
+                    reviewProgress = (float)completedReviews / totalReviews;
+                    reviewStatusMessage = string.Format(I18N.T("ReviewingProgress"), completedReviews, totalReviews);
+                    Repaint();
+                }
+            }
+        }
     }
-} 
+}

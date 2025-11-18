@@ -343,7 +343,12 @@ public class FeishuService
 
         var response = await _httpClient.SendAsync(request);
         var responseContent = await response.Content.ReadAsStringAsync();
-        return JObject.Parse(responseContent);
+        var result = JObject.Parse(responseContent);
+        if (result["code"].Value<int>() != 0)
+        {
+            throw new Exception($"批量创建失败: {result["msg"]}");
+        }
+        return result;
     }
 
     public async Task<JObject> BatchUpdateRecords(string tableId, List<(string recordId, Dictionary<string, object> fields)> updates)
@@ -371,7 +376,12 @@ public class FeishuService
 
         var response = await _httpClient.SendAsync(request);
         var responseContent = await response.Content.ReadAsStringAsync();
-        return JObject.Parse(responseContent);
+        var result = JObject.Parse(responseContent);
+        if (result["code"].Value<int>() != 0)
+        {
+            throw new Exception($"批量更新失败: {result["msg"]}");
+        }
+        return result;
     }
 
     public async Task<JObject> DeleteRecord(string tableId, string recordId)
@@ -564,4 +574,4 @@ public class FeishuService
         var responseContent = await response.Content.ReadAsStringAsync();
         return JObject.Parse(responseContent);
     }
-} 
+}

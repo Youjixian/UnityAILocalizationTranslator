@@ -114,9 +114,11 @@ public class LocalizationSyncManager
                     {
                         ("Key", 1),
                         ("Description", 1),
-                        ("Status", 3)
+                        ("Status", 3),
+                        ("ReviewStatus", 1)
                     };
                     requiredFields.AddRange(locales.Select(l => (l.Identifier.Code, 1)));
+                    requiredFields.AddRange(locales.Select(l => ($"Review_{l.Identifier.Code}", 1)));
                     
                     await _feishuService.EnsureFieldsExist(foundTableId, requiredFields);
                     return foundTableId;
@@ -954,4 +956,189 @@ public class LocalizationSyncManager
             throw;
         }
     }
-} 
+
+    public async Task UpdateReviewForTable(StringTableCollection tableCollection, Dictionary<string, string> reviewByKey, Dictionary<string, string> statusByKey)
+    {
+        try
+        {
+            var tableId = await EnsureTableExists(tableCollection);
+            var existingRecords = await _feishuService.GetAllRecords(tableId);
+            var recordMap = existingRecords != null
+                ? existingRecords.Where(r => r["fields"] != null && r["fields"]["Key"] != null)
+                    .GroupBy(r => r["fields"]["Key"].Value<string>(), StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.OrderByDescending(r => r["last_modified_time"]?.Value<long>() ?? 0).First(),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                : new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+
+            var updateBatch = new List<(string recordId, Dictionary<string, object> fields)>();
+            var createBatch = new List<Dictionary<string, object>>();
+
+            foreach (var (key, reviewText) in reviewByKey)
+            {
+                if (string.IsNullOrEmpty(key)) continue;
+                var value = string.IsNullOrEmpty(reviewText) ? "" : reviewText;
+                if (recordMap.TryGetValue(key, out var record))
+                {
+                    var fields = new Dictionary<string, object>
+                    {
+                        { "Key", key }
+                    };
+                    int failCount = 0;
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        var lines = value.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in lines)
+                        {
+                            var idx = line.IndexOf(':');
+                            if (idx > 0)
+                            {
+                                var lang = line.Substring(0, idx).Trim();
+                                var text = line.Substring(idx + 1).Trim();
+                                bool pass = string.Equals(text, "OK", StringComparison.OrdinalIgnoreCase) || text.EndsWith("OK") || text.Contains(": OK");
+                                fields[$"Review_{lang}"] = string.IsNullOrEmpty(text) ? "OK" : text;
+                                if (!pass) failCount++;
+                            }
+                        }
+                    }
+                    fields["ReviewStatus"] = failCount == 0 ? "通过" : $"未通过({failCount})";
+                    updateBatch.Add((record["record_id"].Value<string>(), fields));
+                    if (updateBatch.Count >= 500)
+                    {
+                        await _feishuService.BatchUpdateRecords(tableId, updateBatch);
+                        updateBatch.Clear();
+                    }
+                }
+                else
+                {
+                    var fields = new Dictionary<string, object>
+                    {
+                        { "Key", key },
+                        { "Status", "未完成" }
+                    };
+                    int failCount = 0;
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        var lines = value.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in lines)
+                        {
+                            var idx = line.IndexOf(':');
+                            if (idx > 0)
+                            {
+                                var lang = line.Substring(0, idx).Trim();
+                                var text = line.Substring(idx + 1).Trim();
+                                bool pass = string.Equals(text, "OK", StringComparison.OrdinalIgnoreCase) || text.EndsWith("OK") || text.Contains(": OK");
+                                fields[$"Review_{lang}"] = string.IsNullOrEmpty(text) ? "OK" : text;
+                                if (!pass) failCount++;
+                            }
+                        }
+                    }
+                    fields["ReviewStatus"] = failCount == 0 ? "通过" : $"未通过({failCount})";
+                    createBatch.Add(fields);
+                    if (createBatch.Count >= 500)
+                    {
+                        await _feishuService.BatchCreateRecords(tableId, createBatch);
+                        createBatch.Clear();
+                    }
+                }
+            }
+
+            if (updateBatch.Count > 0)
+            {
+                await _feishuService.BatchUpdateRecords(tableId, updateBatch);
+            }
+            if (createBatch.Count > 0)
+            {
+                await _feishuService.BatchCreateRecords(tableId, createBatch);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[本地化同步] 更新审阅结果时发生错误: {ex}");
+            throw;
+        }
+    }
+
+    public async Task UpdateTranslationsForTable(StringTableCollection tableCollection, Dictionary<string, Dictionary<string, string>> translationsByKey)
+    {
+        try
+        {
+            Debug.Log($"[本地化同步] 更新翻译列开始，待处理键数: {translationsByKey?.Count ?? 0}");
+            var tableId = await EnsureTableExists(tableCollection);
+            var existingRecords = await _feishuService.GetAllRecords(tableId);
+            var recordMap = existingRecords != null
+                ? existingRecords.Where(r => r["fields"] != null && r["fields"]["Key"] != null)
+                    .GroupBy(r => r["fields"]["Key"].Value<string>(), StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.OrderByDescending(r => r["last_modified_time"]?.Value<long>() ?? 0).First(),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                : new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+            var updateBatch = new List<(string recordId, Dictionary<string, object> fields)>();
+            var createBatch = new List<Dictionary<string, object>>();
+            int updates = 0;
+            int creates = 0;
+            foreach (var (key, langMap) in translationsByKey)
+            {
+                if (string.IsNullOrEmpty(key) || langMap == null || langMap.Count == 0) continue;
+                if (recordMap.TryGetValue(key, out var record))
+                {
+                    var fields = new Dictionary<string, object> { { "Key", key } };
+                    foreach (var kv in langMap)
+                    {
+                        if (!string.IsNullOrEmpty(kv.Key) && kv.Value != null)
+                        {
+                            fields[kv.Key] = kv.Value;
+                        }
+                    }
+                    updateBatch.Add((record["record_id"].Value<string>(), fields));
+                    updates++;
+                    if (updateBatch.Count >= 500)
+                    {
+                        await _feishuService.BatchUpdateRecords(tableId, updateBatch);
+                        updateBatch.Clear();
+                    }
+                }
+                else
+                {
+                    var fields = new Dictionary<string, object>
+                    {
+                        { "Key", key },
+                        { "Status", "未完成" }
+                    };
+                    foreach (var kv in langMap)
+                    {
+                        if (!string.IsNullOrEmpty(kv.Key) && kv.Value != null)
+                        {
+                            fields[kv.Key] = kv.Value;
+                        }
+                    }
+                    createBatch.Add(fields);
+                    creates++;
+                    if (createBatch.Count >= 500)
+                    {
+                        await _feishuService.BatchCreateRecords(tableId, createBatch);
+                        createBatch.Clear();
+                    }
+                }
+            }
+            if (updateBatch.Count > 0)
+            {
+                await _feishuService.BatchUpdateRecords(tableId, updateBatch);
+            }
+            if (createBatch.Count > 0)
+            {
+                await _feishuService.BatchCreateRecords(tableId, createBatch);
+            }
+            Debug.Log($"[本地化同步] 更新翻译列完成，更新: {updates}，创建: {creates}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[本地化同步] 更新翻译列时发生错误: {ex}");
+            throw;
+        }
+    }
+}

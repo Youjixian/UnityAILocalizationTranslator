@@ -216,6 +216,30 @@ namespace CardGame.Editor
                     {Language.Chinese, "AI设置"}
                 }
             },
+            {"PromptTemplates", new Dictionary<Language, string>
+                {
+                    {Language.English, "Prompt Templates"},
+                    {Language.Chinese, "提示词模板"}
+                }
+            },
+            {"TranslationPromptTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translation System Prompt"},
+                    {Language.Chinese, "翻译系统提示词"}
+                }
+            },
+            {"ReviewPromptTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review System Prompt"},
+                    {Language.Chinese, "审阅系统提示词"}
+                }
+            },
+            {"FixPromptTemplate", new Dictionary<Language, string>
+                {
+                    {Language.English, "Fix System Prompt"},
+                    {Language.Chinese, "修正系统提示词"}
+                }
+            },
             {"OpenAISettings", new Dictionary<Language, string>
                 {
                     {Language.English, "OpenAI Settings"},
@@ -410,6 +434,18 @@ namespace CardGame.Editor
                 {
                     {Language.English, "Translate Only Items with Description"},
                     {Language.Chinese, "仅翻译有描述的条目"}
+                }
+            },
+            {"TranslateOnlyFailed", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translate Only Failed Items"},
+                    {Language.Chinese, "仅翻译审阅不合格项目"}
+                }
+            },
+            {"TranslateWithReviewComments", new Dictionary<Language, string>
+                {
+                    {Language.English, "Include Review Comments for Re-translation"},
+                    {Language.Chinese, "携带审阅意见进行重新翻译"}
                 }
             },
             {"DescribedTooltip", new Dictionary<Language, string>
@@ -718,6 +754,114 @@ namespace CardGame.Editor
                     {Language.Chinese, "已{0}翻译！\n成功翻译: {1} 个条目\n未完成: {2} 个条目\n总计: {3} 个条目"}
                 }
             },
+            {"ReviewOptions", new Dictionary<Language, string>
+                {
+                    {Language.English, "AI Review"},
+                    {Language.Chinese, "AI审阅"}
+                }
+            },
+            {"ReviewOnlyNonEmpty", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review only non-empty targets"},
+                    {Language.Chinese, "仅审阅非空目标翻译"}
+                }
+            },
+            {"ReviewOnlyDescribed", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review only items with description"},
+                    {Language.Chinese, "仅审阅有描述的条目"}
+                }
+            },
+            {"OutputToFeishuReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Write results to Feishu Review column"},
+                    {Language.Chinese, "写入飞书Review列"}
+                }
+            },
+            {"StartReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Start Review"},
+                    {Language.Chinese, "开始审阅"}
+                }
+            },
+            {"AutoFixAfterReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Auto Fix After Review"},
+                    {Language.Chinese, "根据审阅自动修正"}
+                }
+            },
+            {"AutoReviewAndFix", new Dictionary<Language, string>
+                {
+                    {Language.English, "Auto Review & Fix"},
+                    {Language.Chinese, "自动审阅并修正"}
+                }
+            },
+            {"ReviewingProgress", new Dictionary<Language, string>
+                {
+                    {Language.English, "Reviewing...({0}/{1})"},
+                    {Language.Chinese, "正在审阅...({0}/{1})"}
+                }
+            },
+            {"ReviewResult", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review {0}!\nSuccessfully reviewed: {1} items\nUnfinished: {2} items\nTotal: {3} items"},
+                    {Language.Chinese, "已{0}审阅！\n成功审阅: {1} 个条目\n未完成: {2} 个条目\n总计: {3} 个条目"}
+                }
+            },
+            {"AutoFixCompleted", new Dictionary<Language, string>
+                {
+                    {Language.English, "Auto-fix completed based on review"},
+                    {Language.Chinese, "已根据审阅完成自动修正"}
+                }
+            },
+            {"ContinueReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Continue Review"},
+                    {Language.Chinese, "继续审阅"}
+                }
+            },
+            {"CancelReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Cancel Review"},
+                    {Language.Chinese, "取消审阅"}
+                }
+            },
+            {"ConfirmReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Confirm Review"},
+                    {Language.Chinese, "确认审阅"}
+                }
+            },
+            {"ConfirmReviewMessage", new Dictionary<Language, string>
+                {
+                    {Language.English, "Will review {0} items.\nContinue?"},
+                    {Language.Chinese, "将审阅 {0} 个条目。\n是否继续？"}
+                }
+            },
+            {"ReviewPrompt", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review Guidelines / Prompt"},
+                    {Language.Chinese, "审阅规范/提示词"}
+                }
+            },
+            {"DefaultReviewPrompt", new Dictionary<Language, string>
+                {
+                    {Language.English, "Please review whether the translation is faithful to the source, terms are consistent, placeholders (e.g. {0}, @, {name}, %d) are preserved, numbers/units/spacing/punctuation are correct, and the tone is professional and concise. Only output a list of issues or OK."},
+                    {Language.Chinese, "请审阅翻译是否忠实于原文；术语是否一致；占位符（如 {0}、@、{name}、%d）是否保留；数字/单位/空格/标点是否规范；语气是否专业简洁。仅输出问题列表或 OK。"}
+                }
+            },
+            {"DefaultTranslationPrompt", new Dictionary<Language, string>
+                {
+                    {Language.English, "Translate the source text faithfully into the target language. Preserve placeholders (e.g. {0}, @, {name}, %d), numbers and units, spacing and punctuation. Use consistent terminology and a professional, concise tone. Output only the translated text."},
+                    {Language.Chinese, "请忠实地将源文本翻译为目标语言。保留占位符（如 {0}、@、{name}、%d）、数字与单位、空格与标点；术语一致；语气专业简洁。只输出翻译后的文本。"}
+                }
+            },
+            {"DefaultFixPrompt", new Dictionary<Language, string>
+                {
+                    {Language.English, "Improve the translation based on the review comments while preserving placeholders (e.g. {0}, @, {name}, %d), numbers and units, spacing and punctuation, and ensuring consistent terminology and professional tone. Output only the corrected translation."},
+                    {Language.Chinese, "请依据审阅意见改进翻译，同时保留占位符（如 {0}、@、{name}、%d）、数字与单位、空格与标点，并确保术语一致、语气专业。只输出修正后的翻译文本。"}
+                }
+            },
         };
 
         /// <summary>
@@ -749,4 +893,4 @@ namespace CardGame.Editor
             return key;
         }
     }
-} 
+}

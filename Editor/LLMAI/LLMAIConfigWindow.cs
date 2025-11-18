@@ -9,7 +9,6 @@ namespace CardGame.Editor.LLMAI
         private Vector2 scrollPosition;
         private GUIStyle promptTextAreaStyle;
 
-
         [MenuItem("Tools/Localization/AI Translator Settings")]
         public static void ShowWindow()
         {
@@ -112,22 +111,7 @@ namespace CardGame.Editor.LLMAI
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(I18N.T("OpenPromptSettings"), GUILayout.ExpandWidth(true)))
             {
-                System.Type t = null;
-                var asms = System.AppDomain.CurrentDomain.GetAssemblies();
-                for (int i = 0; i < asms.Length; i++)
-                {
-                    t = asms[i].GetType("CardGame.Editor.LLMAI.PromptSettingsWindow");
-                    if (t != null) break;
-                }
-                if (t != null)
-                {
-                    var m = t.GetMethod("ShowWindow", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                    m?.Invoke(null, null);
-                }
-                else
-                {
-                    EditorUtility.DisplayDialog(I18N.T("Error"), I18N.CurrentLanguage == I18N.Language.Chinese ? "未找到提示词设置窗口，请确认该功能在当前包版本中可用。" : "Prompt Settings Window not found in this package.", I18N.T("OK"));
-                }
+                PromptSettingsWindow.ShowWindow();
             }
             EditorGUILayout.EndHorizontal();
 

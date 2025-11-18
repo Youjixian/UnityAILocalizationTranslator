@@ -133,7 +133,7 @@ namespace CardGame.Editor.LLMAI
                 var locales = LocalizationEditorSettings.GetLocales();
                 var locale = locales.FirstOrDefault(l => string.Equals(l.LocaleName, targetLanguage, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Identifier.Code, targetLanguage, StringComparison.OrdinalIgnoreCase));
                 var langCode = locale != null ? locale.Identifier.Code : null;
-                var t = System.Type.GetType("CardGame.Editor.LLMAI.LanguagePromptConfig");
+                var t = FindType("CardGame.Editor.LLMAI.LanguagePromptConfig");
                 if (t != null)
                 {
                     var instProp = t.GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
@@ -272,7 +272,7 @@ namespace CardGame.Editor.LLMAI
             }
             if (LLMAIConfig.Instance.useLanguageSupplementPrompts)
             {
-                var t = System.Type.GetType("CardGame.Editor.LLMAI.LanguagePromptConfig");
+                var t = FindType("CardGame.Editor.LLMAI.LanguagePromptConfig");
                 if (t != null)
                 {
                     var instProp = t.GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);

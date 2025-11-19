@@ -68,6 +68,39 @@ namespace CardGame.Editor.LLMAI
         }
 
         [Serializable]
+        private class LLMAIRequestOpenAI
+        {
+            public string model;
+            public List<Message> messages;
+            public float temperature = 0.7f;
+            public int max_completion_tokens = 1000;
+        }
+
+        private string BuildRequestJson(List<Message> messages)
+        {
+            var modelName = LLMAIConfig.Instance.modelName;
+            var useMaxCompletion = LLMAIConfig.Instance.useMaxCompletionTokens;
+            if (useMaxCompletion)
+            {
+                var req = new LLMAIRequestOpenAI
+                {
+                    model = modelName,
+                    messages = messages
+                };
+                return JsonUtility.ToJson(req);
+            }
+            else
+            {
+                var req = new LLMAIRequest
+                {
+                    model = modelName,
+                    messages = messages
+                };
+                return JsonUtility.ToJson(req);
+            }
+        }
+
+        [Serializable]
         private class LLMAIResponse
         {
             public List<Choice> choices;
@@ -159,21 +192,13 @@ namespace CardGame.Editor.LLMAI
                 Debug.Log($"[AI翻译] 发送翻译请求:\n系统提示词: {systemPrompt}\n用户提示词: {userPrompt}");
             }
 
-            var requestData = new LLMAIRequest
-            {
-                model = LLMAIConfig.Instance.modelName,
-                messages = messages
-            };
-
-            string jsonRequest = JsonUtility.ToJson(requestData);
+            string jsonRequest = BuildRequestJson(messages);
             Debug.Log($"[AI翻译] 翻译配置:\n" +
                      $"目标语言: {targetLanguage}\n" +
                      $"本地化Key: {localizationKey}\n" +
                      $"系统提示词: {systemPrompt}\n" +
                      $"用户提示词: {userPrompt}");
-
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonRequest);
-
             using (var request = new UnityWebRequest(LLMAIConfig.Instance.apiUrl, "POST"))
             {
                 request.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -187,12 +212,10 @@ namespace CardGame.Editor.LLMAI
                     {
                         await Task.Yield();
                     }
-
                     if (request.result != UnityWebRequest.Result.Success)
                     {
                         throw new Exception($"API调用失败: {request.error}\n{request.downloadHandler.text}");
                     }
-
                     var response = JsonUtility.FromJson<LLMAIResponse>(request.downloadHandler.text);
                     if (response.choices != null && response.choices.Count > 0)
                     {
@@ -275,15 +298,8 @@ namespace CardGame.Editor.LLMAI
                 new Message { role = "user", content = userPrompt }
             };
 
-            var requestData = new LLMAIRequest
-            {
-                model = LLMAIConfig.Instance.modelName,
-                messages = messages
-            };
-
-            string jsonRequest = JsonUtility.ToJson(requestData);
+            string jsonRequest = BuildRequestJson(messages);
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonRequest);
-
             using (var request = new UnityWebRequest(LLMAIConfig.Instance.apiUrl, "POST"))
             {
                 request.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -297,12 +313,10 @@ namespace CardGame.Editor.LLMAI
                     {
                         await Task.Yield();
                     }
-
                     if (request.result != UnityWebRequest.Result.Success)
                     {
                         throw new Exception($"API调用失败: {request.error}\n{request.downloadHandler.text}");
                     }
-
                     var response = JsonUtility.FromJson<LLMAIResponse>(request.downloadHandler.text);
                     if (response.choices != null && response.choices.Count > 0)
                     {
@@ -370,15 +384,8 @@ namespace CardGame.Editor.LLMAI
                 new Message { role = "user", content = userPrompt }
             };
 
-            var requestData = new LLMAIRequest
-            {
-                model = LLMAIConfig.Instance.modelName,
-                messages = messages
-            };
-
-            string jsonRequest = JsonUtility.ToJson(requestData);
+            string jsonRequest = BuildRequestJson(messages);
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonRequest);
-
             using (var request = new UnityWebRequest(LLMAIConfig.Instance.apiUrl, "POST"))
             {
                 request.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -392,12 +399,10 @@ namespace CardGame.Editor.LLMAI
                     {
                         await Task.Yield();
                     }
-
                     if (request.result != UnityWebRequest.Result.Success)
                     {
                         throw new Exception($"API调用失败: {request.error}\n{request.downloadHandler.text}");
                     }
-
                     var response = JsonUtility.FromJson<LLMAIResponse>(request.downloadHandler.text);
                     if (response.choices != null && response.choices.Count > 0)
                     {

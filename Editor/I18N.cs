@@ -264,6 +264,18 @@ namespace CardGame.Editor
                     {Language.Chinese, "模型名称"}
                 }
             },
+            {"UseMaxCompletionTokens", new Dictionary<Language, string>
+                {
+                    {Language.English, "Use max_completion_tokens"},
+                    {Language.Chinese, "使用 max_completion_tokens"}
+                }
+            },
+            {"UseMaxCompletionTokensDesc", new Dictionary<Language, string>
+                {
+                    {Language.English, "Switch request token parameter to max_completion_tokens (OpenAI newer models)"},
+                    {Language.Chinese, "将请求的token参数切换为 max_completion_tokens（适用于OpenAI新模型）"}
+                }
+            },
             {"MaxTokens", new Dictionary<Language, string>
                 {
                     {Language.English, "Max Tokens"},

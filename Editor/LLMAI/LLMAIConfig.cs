@@ -57,6 +57,7 @@ namespace CardGame.Editor.LLMAI
         public string apiUrl = "https://api.deepseek.com/v1/chat/completions";
         public string apiKey = "";
         public string modelName = "deepseek-chat";
+        public bool useMaxCompletionTokens = false;
         
         // 性能设置
         public int maxConcurrentRequests = 3;

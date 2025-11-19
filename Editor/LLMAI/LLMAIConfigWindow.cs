@@ -37,6 +37,10 @@ namespace CardGame.Editor.LLMAI
             EditorGUILayout.EndHorizontal();
 
             string newModelName = EditorGUILayout.TextField(I18N.T("ModelName"), LLMAIConfig.Instance.modelName);
+            bool newUseMaxCompletionTokens = EditorGUILayout.Toggle(
+                new GUIContent(I18N.T("UseMaxCompletionTokens"), I18N.T("UseMaxCompletionTokensDesc")),
+                LLMAIConfig.Instance.useMaxCompletionTokens
+            );
             
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField(I18N.T("PerformanceSettings"), EditorStyles.boldLabel);
@@ -95,6 +99,7 @@ namespace CardGame.Editor.LLMAI
                 LLMAIConfig.Instance.apiUrl = newApiUrl;
                 LLMAIConfig.Instance.apiKey = newApiKey;
                 LLMAIConfig.Instance.modelName = newModelName;
+                LLMAIConfig.Instance.useMaxCompletionTokens = newUseMaxCompletionTokens;
                 LLMAIConfig.Instance.maxConcurrentRequests = newMaxConcurrentRequests;
                 LLMAIConfig.Instance.maxRetries = newMaxRetries;
                 LLMAIConfig.Instance.retryDelaySeconds = newRetryDelay;

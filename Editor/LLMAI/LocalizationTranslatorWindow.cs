@@ -43,7 +43,7 @@ namespace CardGame.Editor.LLMAI
         private string reviewStatusMessage = "";
         private int completedReviews = 0;
         private int totalReviews = 0;
-        private bool reviewOnlyNonEmpty = true;
+        private bool reviewOnlyNonEmpty = false;
         private bool reviewOnlyDescribed = false;
         private bool outputToFeishuReview = true;
         private string reviewConstraints = "";
@@ -1053,7 +1053,7 @@ namespace CardGame.Editor.LLMAI
                     return;
                 }
                 var tableId = matchingTable["table_id"].Value<string>();
-                var records = await _feishuService.ListRecords(tableId);
+                var records = await _feishuService.GetAllRecords(tableId);
                 _keyDescriptions.Clear();
                 foreach (var record in records)
                 {
@@ -1079,7 +1079,7 @@ namespace CardGame.Editor.LLMAI
             var tables2 = await _feishuService.ListTables();
             var matchingTable2 = tables2.FirstOrDefault(t => t["name"].Value<string>() == selectedCollection.TableCollectionName);
             var tableId2 = matchingTable2["table_id"].Value<string>();
-            var records2 = await _feishuService.ListRecords(tableId2);
+            var records2 = await _feishuService.GetAllRecords(tableId2);
             foreach (var record in records2)
             {
                 var fields = record["fields"] as JObject;

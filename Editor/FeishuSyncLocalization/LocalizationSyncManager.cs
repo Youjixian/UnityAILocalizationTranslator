@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using UnityEditor.Localization;
 using UnityEngine.Localization;
 using UnityEngine.Localization.Tables;
+using System.Text;
 
 public class LocalizationSyncManager
 {

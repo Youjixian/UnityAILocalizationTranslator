@@ -802,6 +802,12 @@ namespace CardGame.Editor
                     {Language.Chinese, "仅审阅有描述的条目"}
                 }
             },
+            {"ReviewOnlyEmptyReview", new Dictionary<Language, string>
+                {
+                    {Language.English, "Review only items with empty Review column"},
+                    {Language.Chinese, "仅审阅审阅列为空的条目"}
+                }
+            },
             {"OutputToFeishuReview", new Dictionary<Language, string>
                 {
                     {Language.English, "Write results to Feishu Review column"},

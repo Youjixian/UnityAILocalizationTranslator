@@ -47,8 +47,10 @@ namespace CardGame.Editor.LLMAI
         private bool reviewOnlyEmptyReview = false;
         private bool reviewOnlyDescribed = false;
         private bool outputToFeishuReview = true;
+        private bool outputToFeishuReviewIncremental = true;
         private string reviewConstraints = "";
         private Dictionary<string, List<string>> _reviewIssuesByKey = new Dictionary<string, List<string>>();
+        private Dictionary<string, int> _lastFlushedCounts = new Dictionary<string, int>();
         private GUIStyle reviewTextAreaStyle;
         private bool translateOnlyFailed = false;
         private bool translateWithReviewComments = false;
@@ -327,6 +329,7 @@ namespace CardGame.Editor.LLMAI
             reviewOnlyEmptyReview = EditorGUILayout.Toggle(I18N.T("ReviewOnlyEmptyReview"), reviewOnlyEmptyReview);
             reviewOnlyDescribed = EditorGUILayout.Toggle(I18N.T("ReviewOnlyDescribed"), reviewOnlyDescribed);
             outputToFeishuReview = EditorGUILayout.Toggle(I18N.T("OutputToFeishuReview"), outputToFeishuReview);
+            outputToFeishuReviewIncremental = EditorGUILayout.Toggle(I18N.T("OutputToFeishuReviewIncremental"), outputToFeishuReviewIncremental);
             EditorGUILayout.EndVertical();
 
             if (!isReviewing)
@@ -1126,6 +1129,7 @@ namespace CardGame.Editor.LLMAI
             isPaused = false;
             pauseCompletionSource = null;
             _reviewIssuesByKey.Clear();
+            _lastFlushedCounts.Clear();
 
             try
             {
@@ -1139,6 +1143,7 @@ namespace CardGame.Editor.LLMAI
                     {
                         if (_cancellationTokenSource.Token.IsCancellationRequested)
                         {
+                            await FlushFeishuReviewPartial(null);
                             ShowReviewResult(true);
                             return;
                         }
@@ -1156,6 +1161,7 @@ namespace CardGame.Editor.LLMAI
                         {
                             if (_cancellationTokenSource.Token.IsCancellationRequested)
                             {
+                                await FlushFeishuReviewPartial(null);
                                 ShowReviewResult(true);
                                 return;
                             }
@@ -1180,6 +1186,7 @@ namespace CardGame.Editor.LLMAI
                             {
                                 await Task.WhenAll(currentBatchTasks);
                                 await Task.Delay(200, _cancellationTokenSource.Token);
+                                await FlushFeishuReviewPartial(null);
                             }
                             catch (Exception ex)
                             {
@@ -1313,6 +1320,34 @@ namespace CardGame.Editor.LLMAI
                 _cancellationTokenSource = null;
                 Repaint();
             };
+        }
+
+        private async Task FlushFeishuReviewPartial(HashSet<string> keys)
+        {
+            if (!outputToFeishuReview || !outputToFeishuReviewIncremental || selectedCollection == null) return;
+            var sync = new LocalizationSyncManager();
+            var map = new Dictionary<string, string>();
+            var statusMap = new Dictionary<string, string>();
+            foreach (var kv in _reviewIssuesByKey)
+            {
+                var key = kv.Key;
+                if (keys != null && !keys.Contains(key)) continue;
+                var count = kv.Value?.Count ?? 0;
+                int prev = _lastFlushedCounts.TryGetValue(key, out var c) ? c : -1;
+                if (count <= 0 || count == prev) continue;
+                var joined = string.Join("\n", kv.Value);
+                map[key] = string.IsNullOrEmpty(joined) ? "OK" : joined;
+                int failCount = kv.Value.Count(l => !IsOkText(l));
+                statusMap[key] = failCount == 0 ? "通过" : $"未通过({failCount})";
+            }
+            if (map.Count > 0)
+            {
+                await sync.UpdateReviewForTable(selectedCollection, map, statusMap);
+                foreach (var key in map.Keys)
+                {
+                    _lastFlushedCounts[key] = _reviewIssuesByKey.TryGetValue(key, out var list) ? (list?.Count ?? 0) : 0;
+                }
+            }
         }
 
         private async Task ProcessFeishuReviewTask(

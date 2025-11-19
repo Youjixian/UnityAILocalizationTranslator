@@ -814,6 +814,12 @@ namespace CardGame.Editor
                     {Language.Chinese, "写入飞书Review列"}
                 }
             },
+            {"OutputToFeishuReviewIncremental", new Dictionary<Language, string>
+                {
+                    {Language.English, "Write review incrementally to Feishu"},
+                    {Language.Chinese, "审阅进行中实时写回飞书"}
+                }
+            },
             {"StartReview", new Dictionary<Language, string>
                 {
                     {Language.English, "Start Review"},

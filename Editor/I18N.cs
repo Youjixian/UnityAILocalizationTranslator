@@ -288,18 +288,6 @@ namespace CardGame.Editor
                     {Language.Chinese, "将请求的token参数切换为 max_completion_tokens（适用于OpenAI新模型）"}
                 }
             },
-            {"UseDefaultTemperature", new Dictionary<Language, string>
-                {
-                    {Language.English, "Use default temperature (1)"},
-                    {Language.Chinese, "使用默认温度(1)"}
-                }
-            },
-            {"UseDefaultTemperatureDesc", new Dictionary<Language, string>
-                {
-                    {Language.English, "Force temperature to 1 for models that only allow default"},
-                    {Language.Chinese, "对于仅允许默认温度的模型，将温度强制为1"}
-                }
-            },
             {"MaxTokens", new Dictionary<Language, string>
                 {
                     {Language.English, "Max Tokens"},

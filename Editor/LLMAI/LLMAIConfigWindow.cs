@@ -47,10 +47,6 @@ namespace CardGame.Editor.LLMAI
                 0f,
                 2f
             );
-            bool newUseDefaultTemperature = EditorGUILayout.Toggle(
-                new GUIContent(I18N.T("UseDefaultTemperature"), I18N.T("UseDefaultTemperatureDesc")),
-                LLMAIConfig.Instance.useDefaultTemperature
-            );
             
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField(I18N.T("PerformanceSettings"), EditorStyles.boldLabel);
@@ -111,7 +107,6 @@ namespace CardGame.Editor.LLMAI
                 LLMAIConfig.Instance.modelName = newModelName;
                 LLMAIConfig.Instance.useMaxCompletionTokens = newUseMaxCompletionTokens;
                 LLMAIConfig.Instance.temperature = newTemperature;
-                LLMAIConfig.Instance.useDefaultTemperature = newUseDefaultTemperature;
                 LLMAIConfig.Instance.maxConcurrentRequests = newMaxConcurrentRequests;
                 LLMAIConfig.Instance.maxRetries = newMaxRetries;
                 LLMAIConfig.Instance.retryDelaySeconds = newRetryDelay;

@@ -80,7 +80,7 @@ namespace CardGame.Editor.LLMAI
         {
             var modelName = LLMAIConfig.Instance.modelName;
             var useMaxCompletion = LLMAIConfig.Instance.useMaxCompletionTokens;
-            var tempValue = LLMAIConfig.Instance.useDefaultTemperature ? 1f : LLMAIConfig.Instance.temperature;
+            var tempValue = LLMAIConfig.Instance.temperature;
             if (useMaxCompletion)
             {
                 var req = new LLMAIRequestOpenAI

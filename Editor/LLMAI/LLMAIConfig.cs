@@ -58,8 +58,7 @@ namespace CardGame.Editor.LLMAI
         public string apiKey = "";
         public string modelName = "deepseek-chat";
         public bool useMaxCompletionTokens = false;
-        public float temperature = 0.7f;
-        public bool useDefaultTemperature = false;
+        public float temperature = 1f;
         
         // 性能设置
         public int maxConcurrentRequests = 3;

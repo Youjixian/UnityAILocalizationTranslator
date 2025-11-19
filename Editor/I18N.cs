@@ -264,6 +264,18 @@ namespace CardGame.Editor
                     {Language.Chinese, "模型名称"}
                 }
             },
+            {"Temperature", new Dictionary<Language, string>
+                {
+                    {Language.English, "Temperature"},
+                    {Language.Chinese, "温度"}
+                }
+            },
+            {"TemperatureDesc", new Dictionary<Language, string>
+                {
+                    {Language.English, "Sampling temperature (0–2). Some models only support default 1"},
+                    {Language.Chinese, "采样温度(0–2)。部分模型仅支持默认值1"}
+                }
+            },
             {"UseMaxCompletionTokens", new Dictionary<Language, string>
                 {
                     {Language.English, "Use max_completion_tokens"},
@@ -274,6 +286,18 @@ namespace CardGame.Editor
                 {
                     {Language.English, "Switch request token parameter to max_completion_tokens (OpenAI newer models)"},
                     {Language.Chinese, "将请求的token参数切换为 max_completion_tokens（适用于OpenAI新模型）"}
+                }
+            },
+            {"UseDefaultTemperature", new Dictionary<Language, string>
+                {
+                    {Language.English, "Use default temperature (1)"},
+                    {Language.Chinese, "使用默认温度(1)"}
+                }
+            },
+            {"UseDefaultTemperatureDesc", new Dictionary<Language, string>
+                {
+                    {Language.English, "Force temperature to 1 for models that only allow default"},
+                    {Language.Chinese, "对于仅允许默认温度的模型，将温度强制为1"}
                 }
             },
             {"MaxTokens", new Dictionary<Language, string>

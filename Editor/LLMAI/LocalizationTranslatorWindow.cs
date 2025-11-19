@@ -44,6 +44,7 @@ namespace CardGame.Editor.LLMAI
         private int completedReviews = 0;
         private int totalReviews = 0;
         private bool reviewOnlyNonEmpty = false;
+        private bool reviewOnlyEmptyReview = false;
         private bool reviewOnlyDescribed = false;
         private bool outputToFeishuReview = true;
         private string reviewConstraints = "";
@@ -323,6 +324,7 @@ namespace CardGame.Editor.LLMAI
             float calcHeight = reviewTextAreaStyle.CalcHeight(content, calcWidth);
             reviewConstraints = EditorGUILayout.TextArea(reviewConstraints, reviewTextAreaStyle, GUILayout.Height(Mathf.Max(60f, calcHeight)), GUILayout.ExpandWidth(true));
             reviewOnlyNonEmpty = EditorGUILayout.Toggle(I18N.T("ReviewOnlyNonEmpty"), reviewOnlyNonEmpty);
+            reviewOnlyEmptyReview = EditorGUILayout.Toggle(I18N.T("ReviewOnlyEmptyReview"), reviewOnlyEmptyReview);
             reviewOnlyDescribed = EditorGUILayout.Toggle(I18N.T("ReviewOnlyDescribed"), reviewOnlyDescribed);
             outputToFeishuReview = EditorGUILayout.Toggle(I18N.T("OutputToFeishuReview"), outputToFeishuReview);
             EditorGUILayout.EndVertical();
@@ -1089,7 +1091,9 @@ namespace CardGame.Editor.LLMAI
                 foreach (var langCode in targetLanguages)
                 {
                     var targetText = fields[langCode]?.Value<string>();
+                    var currentReview = fields[$"Review_{langCode}"]?.Value<string>();
                     if (reviewOnlyNonEmpty && string.IsNullOrEmpty(targetText)) continue;
+                    if (reviewOnlyEmptyReview && !string.IsNullOrEmpty(currentReview)) continue;
                     if (reviewOnlyDescribed && !_keyDescriptions.ContainsKey(key)) continue;
                     var langName = localeMap.TryGetValue(langCode, out var nm) ? nm : langCode;
                     reviewTasks.Add((langCode, langName, key, sourceText, targetText));

@@ -977,20 +977,28 @@ public class LocalizationSyncManager
             var createBatch = new List<Dictionary<string, object>>();
 
             var requiredFields = new List<(string name, int type)> { ("ReviewStatus", 1) };
+            var knownLangs = new HashSet<string>(LocalizationEditorSettings.GetLocales().Select(l => l.Identifier.Code), StringComparer.OrdinalIgnoreCase);
             var langs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (_, reviewText) in reviewByKey)
             {
                 if (string.IsNullOrEmpty(reviewText)) continue;
-                var linesPre = reviewText.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in linesPre)
+                var linesPre = reviewText.Split(new[] { '\n' }, StringSplitOptions.None);
+                string currentLang = null;
+                for (int i = 0; i < linesPre.Length; i++)
                 {
+                    var line = linesPre[i];
                     var idx = line.IndexOf(':');
                     if (idx > 0)
                     {
-                        var lang = line.Substring(0, idx).Trim();
-                        if (!string.IsNullOrEmpty(lang) && langs.Add(lang))
+                        var langCandidate = line.Substring(0, idx).Trim();
+                        if (knownLangs.Contains(langCandidate))
                         {
-                            requiredFields.Add(($"Review_{lang}", 1));
+                            currentLang = langCandidate;
+                            if (langs.Add(currentLang))
+                            {
+                                requiredFields.Add(($"Review_{currentLang}", 1));
+                            }
+                            continue;
                         }
                     }
                 }
@@ -1004,6 +1012,43 @@ public class LocalizationSyncManager
             {
                 if (string.IsNullOrEmpty(key)) continue;
                 var value = string.IsNullOrEmpty(reviewText) ? "" : reviewText;
+                var perLang = new Dictionary<string, StringBuilder>(StringComparer.OrdinalIgnoreCase);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    var lines = value.Split(new[] { '\n' }, StringSplitOptions.None);
+                    string currentLang = null;
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        var idx = line.IndexOf(':');
+                        if (idx > 0)
+                        {
+                            var langCandidate = line.Substring(0, idx).Trim();
+                            if (knownLangs.Contains(langCandidate))
+                            {
+                                currentLang = langCandidate;
+                                var text = line.Substring(idx + 1).Trim();
+                                if (!perLang.TryGetValue(currentLang, out var sb))
+                                {
+                                    sb = new StringBuilder();
+                                    perLang[currentLang] = sb;
+                                }
+                                if (!string.IsNullOrEmpty(text))
+                                {
+                                    if (sb.Length > 0) sb.Append('\n');
+                                    sb.Append(text);
+                                }
+                                continue;
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(currentLang))
+                        {
+                            var sb = perLang[currentLang];
+                            if (sb.Length > 0) sb.Append('\n');
+                            sb.Append(line.Trim());
+                        }
+                    }
+                }
                 if (recordMap.TryGetValue(key, out var record))
                 {
                     var fields = new Dictionary<string, object>
@@ -1011,21 +1056,12 @@ public class LocalizationSyncManager
                         { "Key", key }
                     };
                     int failCount = 0;
-                    if (!string.IsNullOrEmpty(value))
+                    foreach (var kv in perLang)
                     {
-                        var lines = value.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                        foreach (var line in lines)
-                        {
-                            var idx = line.IndexOf(':');
-                            if (idx > 0)
-                            {
-                                var lang = line.Substring(0, idx).Trim();
-                                var text = line.Substring(idx + 1).Trim();
-                                bool pass = string.Equals(text, "OK", StringComparison.OrdinalIgnoreCase) || text.EndsWith("OK") || text.Contains(": OK");
-                                fields[$"Review_{lang}"] = string.IsNullOrEmpty(text) ? "OK" : text;
-                                if (!pass) failCount++;
-                            }
-                        }
+                        var text = kv.Value.ToString();
+                        bool pass = string.Equals(text.Trim(), "OK", StringComparison.OrdinalIgnoreCase) || text.TrimEnd().EndsWith("OK") || text.Contains(": OK");
+                        fields[$"Review_{kv.Key}"] = string.IsNullOrEmpty(text) ? "OK" : text;
+                        if (!pass) failCount++;
                     }
                     fields["ReviewStatus"] = failCount == 0 ? "通过" : $"未通过({failCount})";
                     updateBatch.Add((record["record_id"].Value<string>(), fields));
@@ -1043,21 +1079,12 @@ public class LocalizationSyncManager
                         { "Status", "未完成" }
                     };
                     int failCount = 0;
-                    if (!string.IsNullOrEmpty(value))
+                    foreach (var kv in perLang)
                     {
-                        var lines = value.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                        foreach (var line in lines)
-                        {
-                            var idx = line.IndexOf(':');
-                            if (idx > 0)
-                            {
-                                var lang = line.Substring(0, idx).Trim();
-                                var text = line.Substring(idx + 1).Trim();
-                                bool pass = string.Equals(text, "OK", StringComparison.OrdinalIgnoreCase) || text.EndsWith("OK") || text.Contains(": OK");
-                                fields[$"Review_{lang}"] = string.IsNullOrEmpty(text) ? "OK" : text;
-                                if (!pass) failCount++;
-                            }
-                        }
+                        var text = kv.Value.ToString();
+                        bool pass = string.Equals(text.Trim(), "OK", StringComparison.OrdinalIgnoreCase) || text.TrimEnd().EndsWith("OK") || text.Contains(": OK");
+                        fields[$"Review_{kv.Key}"] = string.IsNullOrEmpty(text) ? "OK" : text;
+                        if (!pass) failCount++;
                     }
                     fields["ReviewStatus"] = failCount == 0 ? "通过" : $"未通过({failCount})";
                     createBatch.Add(fields);

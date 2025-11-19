@@ -96,28 +96,6 @@ public class FeishuService
         }
     }
 
-    public async Task<JArray> ListViews(string tableId)
-    {
-        try
-        {
-            var config = FeishuConfig.Instance;
-            var response = await GetAsync($"bitable/v1/apps/{config.TableId}/tables/{tableId}/views");
-            var result = JObject.Parse(response);
-            if (result["code"].Value<int>() != 0)
-            {
-                var errorMsg = $"获取视图列表失败: {result["msg"]}, 错误码: {result["code"]}";
-                Debug.LogError($"[飞书API] {errorMsg}");
-                throw new Exception(errorMsg);
-            }
-            return result["data"]["items"] as JArray;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[飞书API] 获取视图列表时发生异常: {ex}");
-            throw;
-        }
-    }
-
     private async Task<string> GetAsync(string endpoint)
     {
         try

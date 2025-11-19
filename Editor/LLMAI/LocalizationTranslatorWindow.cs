@@ -1080,11 +1080,33 @@ namespace CardGame.Editor.LLMAI
             var matchingTable2 = tables2.FirstOrDefault(t => t["name"].Value<string>() == selectedCollection.TableCollectionName);
             var tableId2 = matchingTable2["table_id"].Value<string>();
             var records2 = await _feishuService.GetAllRecords(tableId2);
+            int totalRecords = records2?.Count ?? 0;
+            int completedRecords = 0;
+            int generatedFromCompleted = 0;
+            Debug.Log($"FeishuReview: Loaded {totalRecords} records for table {selectedCollection.TableCollectionName}");
             foreach (var record in records2)
             {
                 var fields = record["fields"] as JObject;
                 var key = fields["Key"]?.Value<string>();
                 if (string.IsNullOrEmpty(key)) continue;
+                string statusText = null;
+                if (fields["Status"] != null)
+                {
+                    if (fields["Status"].Type == JTokenType.Array)
+                    {
+                        var arr = (JArray)fields["Status"];
+                        var first = arr.FirstOrDefault();
+                        if (first is JObject obj && obj["name"] != null)
+                            statusText = obj["name"].Value<string>();
+                        else
+                            statusText = first?.Value<string>();
+                    }
+                    else
+                    {
+                        statusText = fields["Status"].Value<string>();
+                    }
+                }
+                if (string.Equals(statusText, "已完成", StringComparison.OrdinalIgnoreCase)) completedRecords++;
                 var sourceText = fields[sourceLanguage]?.Value<string>();
                 foreach (var langCode in targetLanguages)
                 {
@@ -1093,8 +1115,64 @@ namespace CardGame.Editor.LLMAI
                     if (reviewOnlyDescribed && !_keyDescriptions.ContainsKey(key)) continue;
                     var langName = localeMap.TryGetValue(langCode, out var nm) ? nm : langCode;
                     reviewTasks.Add((langCode, langName, key, sourceText, targetText));
+                    if (string.Equals(statusText, "已完成", StringComparison.OrdinalIgnoreCase)) generatedFromCompleted++;
                 }
             }
+            if (completedRecords == 0)
+            {
+                var views = await _feishuService.ListViews(tableId2);
+                var merged = new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase);
+                foreach (var v in views)
+                {
+                    var vid = v["view_id"].Value<string>();
+                    var rs = await _feishuService.GetAllRecords(tableId2, vid);
+                    foreach (var r in rs)
+                    {
+                        var f = r["fields"] as JObject;
+                        var k = f?["Key"]?.Value<string>();
+                        if (string.IsNullOrEmpty(k)) continue;
+                        merged[k] = (JObject)r;
+                    }
+                }
+                reviewTasks.Clear();
+                completedRecords = 0;
+                generatedFromCompleted = 0;
+                foreach (var kv in merged)
+                {
+                    var fields = kv.Value["fields"] as JObject;
+                    var key = fields["Key"]?.Value<string>();
+                    string statusText = null;
+                    if (fields["Status"] != null)
+                    {
+                        if (fields["Status"].Type == JTokenType.Array)
+                        {
+                            var arr = (JArray)fields["Status"];
+                            var first = arr.FirstOrDefault();
+                            if (first is JObject obj && obj["name"] != null)
+                                statusText = obj["name"].Value<string>();
+                            else
+                                statusText = first?.Value<string>();
+                        }
+                        else
+                        {
+                            statusText = fields["Status"].Value<string>();
+                        }
+                    }
+                    if (string.Equals(statusText, "已完成", StringComparison.OrdinalIgnoreCase)) completedRecords++;
+                    var sourceText = fields[sourceLanguage]?.Value<string>();
+                    foreach (var langCode in targetLanguages)
+                    {
+                        var targetText = fields[langCode]?.Value<string>();
+                        if (reviewOnlyNonEmpty && string.IsNullOrEmpty(targetText)) continue;
+                        if (reviewOnlyDescribed && !_keyDescriptions.ContainsKey(key)) continue;
+                        var langName = localeMap.TryGetValue(langCode, out var nm) ? nm : langCode;
+                        reviewTasks.Add((langCode, langName, key, sourceText, targetText));
+                        if (string.Equals(statusText, "已完成", StringComparison.OrdinalIgnoreCase)) generatedFromCompleted++;
+                    }
+                }
+                Debug.Log($"FeishuReview: Fallback via views. Completed-status records: {completedRecords}, tasks from completed: {generatedFromCompleted}, total tasks: {reviewTasks.Count}");
+            }
+            Debug.Log($"FeishuReview: Completed-status records: {completedRecords}, tasks from completed: {generatedFromCompleted}, total tasks: {reviewTasks.Count}");
 
             if (reviewTasks.Count == 0)
             {
